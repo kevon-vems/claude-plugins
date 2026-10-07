@@ -1,0 +1,12 @@
+{
+  "name": "kevon-vems",
+  "owner": { "name": "kevon-vems" },
+  "description": "Shared Claude Code plugins.",
+  "plugins": [
+    {
+      "name": "probe",
+      "source": "./plugins/probe",
+      "description": "Temporary test plugin. Safe to remove."
+    }
+  ]
+}
