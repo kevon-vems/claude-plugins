@@ -38,7 +38,7 @@ export function sectionOf(text: string, name: string): [string, string][] {
       continue
     }
     if (!inside) continue
-    const m = /^\s*[-*]\s+([^:]+?)\s*:\s*(.*?)\s*$/.exec(raw)
+    const m = /^[-*]\s+([^:]+?)\s*:\s*(.*?)\s*$/.exec(raw)
     if (m) out.push([m[1].toLowerCase(), m[2].replace(/^`(.*)`$/, '$1')])
   }
   return out

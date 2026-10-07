@@ -28,7 +28,7 @@ test('a section is read until the next heading, and only that section', () => {
   const got = sectionOf(FILE, 'band')
   expect(got[0]).toEqual(['button', 'Go = say go'])
   expect(got.some(([, v]) => v.includes('nope'))).toBe(false)
-  expect(sectionOf('﻿## Band\n- branch prefix: x/', 'Band')).toEqual([['branch prefix', 'x/']])
+  expect(sectionOf('﻿## Band\n- branch prefix: x/\n  - Default: claude/', 'Band')).toEqual([['branch prefix', 'x/']])
 })
 
 test('a button runs a command or says a line; anything else is dropped', () => {
