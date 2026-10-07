@@ -1,0 +1,6 @@
+{
+  "name": "workflow",
+  "version": "1.0.0",
+  "description": "Branch-to-merge skills: pick an issue, file one, review a PR, ship it, triage failures, clean up branches. Each repo tunes them in .claude/skill-settings.md.",
+  "author": { "name": "kevon-vems" }
+}

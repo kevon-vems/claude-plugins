@@ -1,12 +1,19 @@
 {
   "name": "kevon-vems",
-  "owner": { "name": "kevon-vems" },
+  "owner": {
+    "name": "kevon-vems"
+  },
   "description": "Shared Claude Code plugins.",
   "plugins": [
     {
       "name": "band",
       "source": "./plugins/band",
       "description": "A status band above the prompt, with buttons, auto-continue, /handoff, /wrapup and /skills-panel."
+    },
+    {
+      "name": "workflow",
+      "source": "./plugins/workflow",
+      "description": "Shared skills: shipit, pr-review, triage, gh-go, create-ghi and more, tuned per repo by .claude/skill-settings.md."
     }
   ]
 }

@@ -11,7 +11,7 @@ function b(id: string, over: Partial<Beat> = {}): Beat {
 
 test('the fleet folder sits under the home folder', () => {
   expect(fleetDir('C:\\Users\\me\\')).toBe('C:/Users/me/.claude/band-fleet')
-  expect(fleetDir('/Users/deven')).toBe('/Users/deven/.claude/band-fleet')
+  expect(fleetDir('/Users/sam')).toBe('/Users/sam/.claude/band-fleet')
 })
 
 test('ended and silent sessions drop out, and the ones asking come first', () => {
