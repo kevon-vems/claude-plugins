@@ -4,9 +4,9 @@
   "description": "Shared Claude Code plugins.",
   "plugins": [
     {
-      "name": "probe",
-      "source": "./plugins/probe",
-      "description": "Temporary test plugin. Safe to remove."
+      "name": "band",
+      "source": "./plugins/band",
+      "description": "A status band above the prompt, with buttons, auto-continue, /handoff, /wrapup and /skills-panel."
     }
   ]
 }
