@@ -1,0 +1,71 @@
+## Release notes
+
+Read by /release-notes. Every line is optional except the three marked required. It also reads `## Shared`: `repo`, `base branch`, `people`.
+
+Keys marked `(local)` hold values that must never be published. Put them in `.claude/skill-settings.local.md` (gitignored, read from the main checkout), under the same `## Release notes` heading. See `README.md`, "Private values".
+
+- docs: none
+  - One line per doc read before step 1, e.g. the commit policy that defines the after-deploy heading.
+- deploy source: none (local)
+  - Where production deploys run and report what shipped. Default: the user names the deploy that finished.
+- user-facing app: the app signed-in users use
+  - The app whose deploy defines the release range. Its deploy skipped or failed means nothing to announce.
+- background apps: none (local)
+  - One line per app whose change counts only if it deployed in this run and a user sees it (a mail app: a message they receive).
+- after deploy heading: ## After deploy
+  - The exact PR-body heading that holds one-time steps. Step 1b collects them from every PR in the range.
+- flag state command: none
+  - Command that prints each feature flag's state in PRODUCTION. `<sha>` stands for the now-live sha. Default: ask the user each flag's state; never read it from code.
+- flag notes: none (local)
+  - Known ways a flag drifts from its code default here: admin screens, breakers, past incidents.
+- changelog surfaces: none (local)
+  - Where the changelog shows up: admin authoring, in-app page, public page, email blast.
+- changelog table: none (local, required)
+  - The table the drafts are inserted into, schema-qualified.
+- changelog columns: (local)
+  - One line per role, as `<role> = <column> <type>`. Roles: slug, title, category, audience, summary, body, status, publish date, author, created, blast sent, blast skip. Default: read from `schema project`.
+- status values: (local)
+  - Status names and values, e.g. `draft = 0, published = 1, scheduled = 2`. Default: read from `schema project` or the product's enum. No draft value found means the skill stops.
+- category values: (local)
+  - Category names and values, and which one each bucket uses (feature, improvement, bug fix). Default: read from `schema project` or the product's enum.
+- press category: none (local)
+  - The category for a public press release, and where it lands. Never derived from a deploy; only on a click. Default: none, the press question is skipped.
+- audience values: none (local)
+  - The audience column's values, including the one meaning everyone. Default: none, no audience column is set.
+- unique index: (local)
+  - The unique index on the slug. Default: read from `schema project`.
+- users table: none (local, required)
+  - The users table, its id column, the column to match the operator's email on, the stored form (e.g. uppercase), and any collation trap.
+- schema project: none
+  - The repo's database project. Read for the table shape; never written to by this skill.
+- slug rule: lowercase, ASCII letters and digits, other runs become `-`, trimmed, cut to the column length, empty becomes `release`
+  - Must match what the site generates.
+- review tool: none (local)
+  - Where the reviewer edits and publishes a draft.
+- changelog reviewer: the operator
+  - Who reviews and publishes the drafts. Named in the email.
+- operator: git config user.name
+  - How to find the person running this deploy, e.g. a machine-to-person map. Never the owner of the release log folder.
+- operator profile: none
+  - The operator's file holding their product email, signature and draft-and-send loop. `<operator>` stands for the person. Default: ask the operator once.
+- release log folder: none (required)
+  - The ONE folder every changelog SQL file and release email lands in. Step 1 reads the newest file's first line from here.
+- release log template: none
+  - Folder copied to create the release log folder on first run. Default: an empty folder.
+- log file: none
+  - File in the release log folder whose `## Log` gets a line per run. Default: none, step 6 is skipped.
+- apply script: none
+  - Script, relative to the main checkout, that applies the SQL file to production. Default: none, the path is handed over.
+- apply login: none (local)
+  - The database login the apply script uses and what it may do.
+- apply setup: none (local)
+  - What a person runs once when the apply script's credential is missing: secret name, provisioning command, firewall needs.
+- email template: none
+  - HTML template for the team email. Default: plain, simple HTML.
+- recipients: none
+  - Where the team's addresses come from. Never typed from memory. Default: ask the operator.
+- send command: none
+  - Command that sends the email file. Default: none, the operator sends it.
+- product name rule: none
+  - How the product's name is written in copy a reader sees.
+- One plain bullet per house rule /release-notes follows as if it were written in the skill.

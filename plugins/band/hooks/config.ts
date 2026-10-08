@@ -10,6 +10,7 @@ export type BandConfig = {
   branchPrefix: string
   handoffRules: string[]
   extraSkills: string[]
+  skillPlugins: string[]
 }
 
 export const DEFAULTS: BandConfig = {
@@ -24,6 +25,7 @@ export const DEFAULTS: BandConfig = {
   branchPrefix: 'claude/',
   handoffRules: ['Short lines, bullets, plain words.'],
   extraSkills: [],
+  skillPlugins: ['workflow'],
 }
 
 export function sectionOf(text: string, name: string): [string, string][] {
@@ -72,5 +74,6 @@ export function configOf(text: string | undefined): BandConfig {
     branchPrefix: prefix === undefined ? DEFAULTS.branchPrefix : prefix === 'none' ? '' : prefix,
     handoffRules: rules.length ? rules : DEFAULTS.handoffRules,
     extraSkills: all('extra skill'),
+    skillPlugins: all('skill plugin').length ? all('skill plugin') : DEFAULTS.skillPlugins,
   }
 }

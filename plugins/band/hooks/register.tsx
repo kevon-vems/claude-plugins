@@ -134,14 +134,17 @@ export function buttonsOf(all: BandButton[], have: Set<string> | undefined): Ban
   return all.filter(b => b.say !== undefined || (b.run !== undefined && (!have || have.has(b.run))))
 }
 
-export function skillsOf(commands: CommandInfo[], mine: string[], extra: string[]): Option[] {
+export function skillsOf(commands: CommandInfo[], mine: string[], extra: string[], plugins: string[] = []): Option[] {
   const wanted = new Set([...mine, ...extra])
+  const from = new Set(plugins)
+  const seen = new Set<string>()
   return commands
-    .map(c => c.name.replace(/^\//, ''))
-    .filter(name => wanted.has(name))
-    .filter((name, i, all) => all.indexOf(name) === i)
-    .sort((a, b) => a.localeCompare(b))
-    .map(name => ({ value: name, label: name }))
+    .map(c => ({ value: c.name.replace(/^\//, ''), plugin: c.plugin }))
+    .map(c => ({ ...c, label: c.plugin && c.value.startsWith(`${c.plugin}:`) ? c.value.slice(c.plugin.length + 1) : c.value }))
+    .filter(c => wanted.has(c.value) || wanted.has(c.label) || (c.plugin !== undefined && from.has(c.plugin)))
+    .sort((a, b) => a.label.localeCompare(b.label) || a.value.length - b.value.length)
+    .filter(c => !seen.has(c.label) && !!seen.add(c.label))
+    .map(c => ({ value: c.value, label: c.label }))
 }
 
 const STALE_MS = 30 * 60 * 1000
@@ -234,7 +237,7 @@ async function refresh($: EngineInterface, timer = false): Promise<void> {
       ? (await $.fs.list(`${top}/.claude/skills`).catch(() => [])).filter(d => d.kind === 'dir').map(d => d.name)
       : []
     const commands = await $.command.list()
-    skills = skillsOf(commands, mine, cfg.extraSkills)
+    skills = skillsOf(commands, mine, cfg.extraSkills, cfg.skillPlugins)
     have = new Set(commands.map(c => c.name.replace(/^\//, '')))
     if (!top) {
       await update($, work, () => null)

@@ -1,7 +1,7 @@
 {
   "name": "band",
-  "version": "1.1.1",
-  "description": "A band above the prompt: worktree, issue, PR and CI, review round, context and weekly use, a warning when another session shares the worktree, buttons for the commands typed most, a countdown that continues a turn ending on a go-ahead question, /handoff, /wrapup and /skills-panel. Each repo tunes it in .claude/skill-settings.md.",
+  "version": "1.2.0",
+  "description": "A band above the prompt: worktree, issue, PR and CI, review round, context and weekly use, a warning when another session shares the worktree, buttons for the commands typed most, /handoff, /wrapup and /skills-panel. Each repo tunes it in .claude/skill-settings.md.",
   "author": { "name": "kevon-vems" },
   "types": "./types/index.d.ts"
 }

@@ -156,6 +156,20 @@ test('the skills list holds only repo skills and named extras that are loaded', 
   expect(got.map(o => o.value)).toEqual(['deep-research', 'gh-go', 'shipit'])
 })
 
+test('every skill of a named plugin is listed under its short name', () => {
+  const commands = [
+    { name: 'workflow:archive', description: '', source: 'plugin' as const, plugin: 'workflow' },
+    { name: 'workflow:reseed', description: '', source: 'plugin' as const, plugin: 'workflow' },
+    { name: 'pdf', description: '', source: 'plugin' as const, plugin: 'anthropic-skills' },
+    { name: 'reseed', description: '', source: 'user' as const },
+  ]
+  const got = skillsOf(commands, ['reseed'], [], ['workflow'])
+  expect(got).toEqual([
+    { value: 'workflow:archive', label: 'archive' },
+    { value: 'reseed', label: 'reseed' },
+  ])
+})
+
 test('a queued entry expires after half an hour', () => {
   expect(live({ 'run:shipit': 0, 'say:go': 1000 }, 30 * 60 * 1000 + 500)).toEqual({ 'say:go': 1000 })
 })

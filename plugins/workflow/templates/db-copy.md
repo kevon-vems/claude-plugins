@@ -1,0 +1,44 @@
+## DB copy
+
+Read by /db-copy. Plain bullets under the keys are rules, followed as if written in the skill. Keys marked `(local)` go in `.claude/skill-settings.local.md`, never in the committed file. Paths are relative to the repo root (`git rev-parse --show-toplevel`).
+
+- operator: the user
+  - Who clicks the confirmation and runs any admin SQL.
+- copy script: none
+  - Required. The script that copies production onto one non-production catalog.
+- copy shell: pwsh -File
+  - How the script is started.
+- copy doc: none
+  - Doc with the full behavior and every recovery path.
+- target flag: -Environment
+  - The script switch that names the target.
+- target: none
+  - Required. One line per valid typed word: `<typed> = <flag value>`, e.g. `dev = Dev`. Nothing else is accepted. Production is never one.
+- catalog: none (local)
+  - Required. `<flag value> = <database name>`. One line per target.
+- server: none (local)
+  - Required. The database server the copy lands on. Named in the warning line.
+- refused target: none
+  - `<typed> = <why>`. A catalog that exists but is not offered, e.g. one the test pipeline owns.
+- extra: none
+  - `<phrases> = <switch>`. One line per optional switch, e.g. `skip the emails, clear the queue = -ClearEmailQueue`. A path value is written `<path>`.
+- no prompt flag: -NoPause
+  - Skips the script's own console prompt. Added only after the click.
+- email queue flag: none
+  - The switch that empties outbound mail. When set and unused, the skill warns that real addresses come over.
+- keep file flag: none
+  - The switch that keeps the downloaded copy. When used, the skill names the file and asks for it to be deleted later.
+- owner exit code: none
+  - Exit code for "target catalog owned by the wrong login".
+- copy login: none (local)
+  - The login that must own the target catalog.
+- grant exit code: none
+  - Exit code for "restored, but the site's database user was not re-created".
+- grant command: none
+  - The script that re-creates that user.
+- grant server: none (local)
+  - The only server `grant command` reaches.
+- sql tool: their SQL client
+  - Where the operator runs admin SQL.
+- refill skill: none
+  - The skill that refills a catalog with test data, named in the closing line.
