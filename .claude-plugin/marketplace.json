@@ -8,7 +8,7 @@
     {
       "name": "band",
       "source": "./plugins/band",
-      "description": "A status band above the prompt, with buttons, auto-continue, /handoff, /wrapup and /skills-panel."
+      "description": "A status band above the prompt, with buttons, /handoff, /wrapup and /skills-panel."
     },
     {
       "name": "workflow",

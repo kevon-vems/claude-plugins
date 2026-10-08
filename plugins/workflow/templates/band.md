@@ -12,8 +12,6 @@ Read by the band plugin. Every line is optional.
   - Where the issue number sits in a branch name; `{issue}` marks it. With no line, the band takes a number then a hyphen, after at most one prefix (`claude/123-x`, `123-x`).
 - branch prefix: claude/
   - Dropped from the branch name shown on the band. `none` shows the full name. Default: `claude/`.
-- auto-continue text: go (auto-continue: start the plan you proposed; anything with its own approval still waits)
-  - What the auto-continue sends after its countdown.
 - handoff rule: Short lines, bullets, plain words.
   - One line per rule /handoff adds to the prompt it writes.
 - extra skill:

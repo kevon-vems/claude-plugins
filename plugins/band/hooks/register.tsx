@@ -1,10 +1,9 @@
 import { atom, read, update } from 'claude-code'
-import type { CommandInfo, EngineInterface, Register, Timer } from 'claude-code'
+import type { CommandInfo, EngineInterface, Register } from 'claude-code'
 
 import type { Activity, Beat, Handoff, Report, Wrapup, Ci, FleetRow, Pr, Review, Work } from '../types'
 import { DEFAULTS, MARKETPLACE, PLUGIN, SETTINGS_FILE, configOf } from './config'
 import type { BandButton, BandConfig } from './config'
-import { AUTO_MS, MAX_AUTO, clip, fromUser, proceedLine, secondsLeft } from './autogo'
 import { UPDATE_DELAY_MS, due, ownPlugins } from './update'
 import { SKILLS_PANE, skillRows, splitSkill } from './skills'
 import { THREADS_QUERY, WRAPUP_PANE, commitsOf, dirtyOf, ghiBody, ghiTitle, isClear, issueNumberOf, repoOf, threadsOf } from './wrapup'
@@ -15,7 +14,6 @@ const work = atom({ plugin: 'band', key: 'work' } as const, null)
 const focus = atom({ plugin: 'band', key: 'focus' } as const, null)
 const pending = atom({ plugin: 'band', key: 'pending' } as const, {})
 const fleet = atom({ plugin: 'band', key: 'fleet' } as const, [])
-const auto = atom({ plugin: 'band', key: 'auto' } as const, null)
 const handoff = atom({ plugin: 'band', key: 'handoff' } as const, null)
 const wrapup = atom({ plugin: 'band', key: 'wrapup' } as const, null)
 const skillView = atom({ plugin: 'band', key: 'skillView' } as const, null)
@@ -164,8 +162,6 @@ let home: string | undefined
 let selfId = ''
 let activity: Activity = 'waiting'
 let since = 0
-let autoRuns = 0
-let autoTimers: Timer[] = []
 let tick = 0
 let focusTick = 0
 let branchTick = 0
@@ -342,35 +338,6 @@ async function prune($: EngineInterface): Promise<void> {
     }
   } catch (err) {
     $.ui.log(`band: fleet prune failed: ${String(err)}`, { to: 'debug' })
-  }
-}
-
-async function disarm($: EngineInterface): Promise<void> {
-  for (const t of autoTimers) t.cancel()
-  autoTimers = []
-  if ((await read($, auto)) !== null) await update($, auto, () => null)
-}
-
-async function arm($: EngineInterface, line: string): Promise<void> {
-  await disarm($)
-  const now = await $.clock.now()
-  await update($, auto, () => ({ until: now + AUTO_MS, line, now }))
-  autoTimers = [
-    $.clock.every(1000, () => {
-      void $.clock.now().then(t => update($, auto, a => (a ? { ...a, now: t } : a)))
-    }),
-    $.clock.after(AUTO_MS, () => void autoGo($)),
-  ]
-}
-
-async function autoGo($: EngineInterface): Promise<void> {
-  try {
-    if ((await read($, auto)) === null) return
-    await disarm($)
-    autoRuns++
-    await $.prompt.submit({ text: cfg.autoText })
-  } catch (err) {
-    $.ui.log(`band: auto-continue failed: ${String(err)}`, { to: 'debug' })
   }
 }
 
@@ -599,7 +566,6 @@ export const register: Register = on => {
 
   on('turn.start', async ($, e, next) => {
     void beat($, 'working')
-    await disarm($)
     return next(e)
   })
 
@@ -622,21 +588,6 @@ export const register: Register = on => {
 
   on('turn.complete', async ($, e, next) => {
     void refresh($).then(() => beat($, 'waiting'))
-    const done = await next(e)
-    try {
-      if (e.agentId === undefined && e.reason === 'answer' && autoRuns < MAX_AUTO) {
-        const line = proceedLine(e.answer)
-        if (line) await arm($, line)
-      }
-    } catch (err) {
-      $.ui.log(`band: auto-continue not armed: ${String(err)}`, { to: 'debug' })
-    }
-    return done
-  })
-
-  on('prompt.submit', async ($, e, next) => {
-    if (fromUser(e.origin)) autoRuns = 0
-    await disarm($)
     return next(e)
   })
 
@@ -851,19 +802,10 @@ export const register: Register = on => {
       if (parts.length) parts.push(sep('sh'))
       parts.push(<Text key="sh" color="red" bold>{`worktree shared with ${shared} other session${shared === 1 ? '' : 's'}`}</Text>)
     }
-    const a = await read($, auto)
 
     return (
       <Box flexDirection="column" rowGap={1}>
         {parts.length > 0 ? <Box>{parts}</Box> : null}
-        {a ? (
-          <Box columnGap={2} alignItems="center">
-            <Text color="yellow" bold>{`Auto-continue in ${secondsLeft(a.until, a.now)}s`}</Text>
-            <Text dimColor>{clip(a.line)}</Text>
-            <Button key="auto-go" label="Go now" onPress={() => void disarm($).then(() => fire($, { label: 'Go', say: 'go' }))} />
-            <Button key="auto-stop" label="Stop" onPress={() => void disarm($)} />
-          </Box>
-        ) : null}
         <Box columnGap={2} flexWrap="wrap" alignItems="center">
           {buttonsOf(cfg.buttons, have).map(b => {
             const key = b.run ? runKey(b.run) : b.say ? sayKey(b.say) : ''

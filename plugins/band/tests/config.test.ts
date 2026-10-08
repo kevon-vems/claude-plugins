@@ -15,7 +15,6 @@ const FILE = [
   '- button: Broken',
   '- issue branch: `claude/{issue}-`',
   '- branch prefix: claude/',
-  '- auto-continue text: go (auto-continue, armed by the owner)',
   '- handoff rule: Short lines.',
   '- handoff rule: Never a dash pair.',
   '- extra skill: deep-research',
@@ -53,7 +52,6 @@ test('the repo file sets every value it names', () => {
   expect(c.issueBranch.exec('claude/12-x')?.[1]).toBe('12')
   expect(c.issueBranch.exec('12-x')).toBeNull()
   expect(c.branchPrefix).toBe('claude/')
-  expect(c.autoText).toBe('go (auto-continue, armed by the owner)')
   expect(c.handoffRules).toEqual(['Short lines.', 'Never a dash pair.'])
   expect(c.extraSkills).toEqual(['deep-research'])
 })

@@ -8,7 +8,6 @@ export type BandConfig = {
   buttons: BandButton[]
   issueBranch: RegExp
   branchPrefix: string
-  autoText: string
   handoffRules: string[]
   extraSkills: string[]
 }
@@ -23,7 +22,6 @@ export const DEFAULTS: BandConfig = {
   ],
   issueBranch: /^(?:[^/]+\/)?(\d+)-/,
   branchPrefix: 'claude/',
-  autoText: 'go (auto-continue: start the plan you proposed; anything with its own approval still waits)',
   handoffRules: ['Short lines, bullets, plain words.'],
   extraSkills: [],
 }
@@ -72,7 +70,6 @@ export function configOf(text: string | undefined): BandConfig {
     buttons: buttons.length ? buttons : DEFAULTS.buttons,
     issueBranch: issuePattern(one('issue branch') ?? '') ?? DEFAULTS.issueBranch,
     branchPrefix: prefix === undefined ? DEFAULTS.branchPrefix : prefix === 'none' ? '' : prefix,
-    autoText: one('auto-continue text') ?? DEFAULTS.autoText,
     handoffRules: rules.length ? rules : DEFAULTS.handoffRules,
     extraSkills: all('extra skill'),
   }

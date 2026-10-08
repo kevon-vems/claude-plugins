@@ -27,8 +27,6 @@ export type Beat = {
 
 export type FleetRow = Beat & { self: boolean; shared: boolean }
 
-export type AutoGo = { until: number; line: string; now: number }
-
 export type Handoff =
   | { status: 'writing' }
   | { status: 'ready'; text: string; sent?: string }
@@ -69,6 +67,6 @@ export type SkillView = {
 
 declare module 'claude-code' {
   interface PluginState {
-    band: { work: Work | null; focus: number | null; pending: Record<string, number>; fleet: FleetRow[]; auto: AutoGo | null; handoff: Handoff | null; wrapup: Wrapup | null; skillView: SkillView | null }
+    band: { work: Work | null; focus: number | null; pending: Record<string, number>; fleet: FleetRow[]; handoff: Handoff | null; wrapup: Wrapup | null; skillView: SkillView | null }
   }
 }
