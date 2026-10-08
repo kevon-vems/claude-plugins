@@ -17,6 +17,7 @@ const fleet = atom({ plugin: 'band', key: 'fleet' } as const, [])
 const handoff = atom({ plugin: 'band', key: 'handoff' } as const, null)
 const wrapup = atom({ plugin: 'band', key: 'wrapup' } as const, null)
 const skillView = atom({ plugin: 'band', key: 'skillView' } as const, null)
+const skillPick = atom({ plugin: 'band', key: 'skillPick' } as const, null)
 
 const SCAN_MS = 30 * 1000
 const PR_MS = 60 * 1000
@@ -751,6 +752,8 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     const w = await read($, work)
+    const pick = await read($, skillPick)
+    const picked = skills.find(s => s.value === pick)?.value ?? skills[0]?.value
     const usage = await $.session.usage()
     const { Box, Button, Select, Text } = $.ui.resolve(e)
 
@@ -821,8 +824,9 @@ export const register: Register = on => {
           })}
           <Button key="b-skills" label="Manage skills" onPress={() => void openSkills($)} />
           {skills.length > 0 ? (
-            <Box key="skills" marginLeft={2}>
-              <Select key="skills" label="Skills" options={skills} onSelect={value => void fire($, { label: value, run: value })} />
+            <Box key="skills" marginLeft={2} columnGap={1} alignItems="center">
+              <Select key="skills" label="Skills" options={skills} value={picked} onSelect={value => void update($, skillPick, () => value)} />
+              <Button key="skills-run" label={picked && runKey(picked) in waiting ? 'Run (queued)' : 'Run'} dimColor={!!picked && runKey(picked) in waiting} onPress={() => void (picked && fire($, { label: picked, run: picked }))} />
             </Box>
           ) : null}
           {Object.keys(waiting).length > 0 ? <Text key="busy" dimColor>queued, runs when Claude is free</Text> : null}

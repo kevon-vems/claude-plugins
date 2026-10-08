@@ -67,6 +67,6 @@ export type SkillView = {
 
 declare module 'claude-code' {
   interface PluginState {
-    band: { work: Work | null; focus: number | null; pending: Record<string, number>; fleet: FleetRow[]; handoff: Handoff | null; wrapup: Wrapup | null; skillView: SkillView | null }
+    band: { work: Work | null; focus: number | null; pending: Record<string, number>; fleet: FleetRow[]; handoff: Handoff | null; wrapup: Wrapup | null; skillView: SkillView | null; skillPick: string | null }
   }
 }
