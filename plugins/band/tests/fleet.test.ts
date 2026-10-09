@@ -194,6 +194,57 @@ test('a PR opened while the session sits idle reaches the heartbeat within a min
   expect(w.writes.at(-1)?.beat.pr).toMatchObject({ number: 77, state: 'OPEN' })
 })
 
+const ghChecks = (checks: object[]) => ({ code: 0, stdout: JSON.stringify({ number: 77, state: 'OPEN', title: 'Fleet (#4740)', statusCheckRollup: checks, reviews: [] }) })
+const RUNNING = [{ status: 'IN_PROGRESS' }]
+const PASSED = [{ status: 'COMPLETED', conclusion: 'SUCCESS' }]
+
+test('while CI runs the PR is re-read every 15s, so the band follows it going green', async ($, on) => {
+  const clock = mock.clock(on, { now: NOW })
+  let answer: ReturnType<Gh> = ghChecks(RUNNING)
+  const w = world(on, new Map(), 's1', () => answer)
+  await $.session.start(START)
+  await settle(clock)
+  expect(w.writes.at(-1)?.beat.pr).toMatchObject({ ci: 'running' })
+  answer = ghChecks(PASSED)
+  await clock.advance(15 * 1000)
+  await settle(clock)
+  expect(w.writes.at(-1)?.beat.pr).toMatchObject({ ci: 'passing' })
+})
+
+test('once CI has settled the PR goes back to one read a minute', async ($, on) => {
+  const clock = mock.clock(on, { now: NOW })
+  const w = world(on, new Map(), 's1', () => ghChecks(PASSED))
+  await $.session.start(START)
+  await settle(clock)
+  const before = prReads(w.runs)
+  await clock.advance(45 * 1000)
+  await settle(clock)
+  expect(prReads(w.runs)).toBe(before)
+})
+
+test('a failed GitHub read keeps the last CI but marks it stale, and the next good read clears it', async ($, on) => {
+  const clock = mock.clock(on, { now: NOW })
+  let answer: ReturnType<Gh> = ghChecks(PASSED)
+  const w = world(on, new Map(), 's1', () => answer)
+  await $.session.start(START)
+  await settle(clock)
+  expect(w.writes.at(-1)?.beat.pr).toMatchObject({ ci: 'passing' })
+  answer = { code: 1, stderr: 'HTTP 502: Bad Gateway' }
+  await clock.advance(60 * 1000)
+  await settle(clock)
+  const band = async () => {
+    const ui = await $.ui.mount({ plugin: 'band', surface: 'desktop', component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 120 } } as never)
+    const seen = { stale: !!(await ui.find({ type: 'Text', text: '  CI passing (stale)' })), any: !!(await ui.find({ type: 'Text', text: '  CI passing' })) }
+    await ui.unmount()
+    return seen
+  }
+  expect(await band()).toEqual({ stale: true, any: true })
+  answer = ghChecks(PASSED)
+  await clock.advance(60 * 1000)
+  await settle(clock)
+  expect(await band()).toEqual({ stale: false, any: true })
+})
+
 test('once the PR is merged, the timer stops asking GitHub but still reads git', async ($, on) => {
   const clock = mock.clock(on, { now: NOW })
   const w = world(on, new Map(), 's1', () => ghPr('MERGED'))
