@@ -34,6 +34,7 @@ Keys this skill reads, with defaults:
 | `review gated` | Shared | every PR |
 | `posting rules` | Shared | none |
 | `start on PR open` | PR review | `yes` |
+| `open as draft` | PR review | `no` |
 | `round cap` | PR review | `3` |
 | `cap reset` | PR review | none extra |
 | `merge guard` | PR review | `none` |
@@ -65,7 +66,7 @@ questions below are answered **Fix** without being asked. The user
 saying "fix the nits" anywhere in the session does the same, and so
 does `nits: fix` in the settings. `nits: leave` answers both
 questions **Leave**.
-Flags (sweep): `--drafts` includes draft PRs, `--dry-run` posts
+Flags (sweep): `--drafts` includes draft PRs (always on when `open as draft` is `yes`), `--dry-run` posts
 nothing. `--repo` retargets either mode.
 
 ## The loop (default)
@@ -93,8 +94,11 @@ to drop. Rulings are never re-litigated with the reviewer.
 The moment `gh pr create` returns, the session that opened it starts
 this loop: if the host offers PR binding (a `get_status` / `bind_pr`
 tool), bind the PR so CI is reported to the session, and spawn round 1
-**in the background** so the review runs while CI does. No question
-first - opening the PR is the go. Never poll CI in a loop; with
+**in the background**. When `open as draft` is `no`, the review runs
+while CI does. When it is `yes`, the PR was opened as a draft
+(`gh pr create --draft`) and the repo's CI skips drafts, so the review
+runs alone; see "Mark ready" below. No question first - opening the PR
+is the go. Never poll CI in a loop; with
 binding, the CI event is what wakes the session; without it, check
 `gh pr checks <n>` once when the review returns.
 
@@ -119,7 +123,7 @@ check, not a replacement.
 2. **Verdict clean** -> the loop stops posting, but clean with nits
    open is NOT auto-done. Two cases:
    - **Zero nits open** (`pr-review-open` marker reads `0/0/0`) ->
-     go to "Ship when both are green" below.
+     "Mark ready" below, then "Ship when both are green".
    - **Nits open** -> list them in chat, one line each, then ASK with
      `AskUserQuestion`, single-select, labels EXACTLY
      `Fix the nits -- PR #<n>` (recommended, first) and
@@ -129,8 +133,8 @@ check, not a replacement.
      **Fix** below; Leave the nits -> **Leave** below). Otherwise
      never assume the answer; never proceed past this question on
      your own.
-     - **Leave** -> no automatic ship. Report the review URL, say the
-       PR is clean with nits left, and stop. `/shipit` is the user's
+     - **Leave** -> "Mark ready" below. No automatic ship. Report the
+       review URL, say the PR is clean with nits left, and stop. `/shipit` is the user's
        to type.
      - **Fix** -> fix every open nit in the worktree, commit, push,
        go to 1. A click is the user's input: it resets the round cap,
@@ -187,6 +191,20 @@ itself on a body-only PR (step 7) where no thread exists - and end.
 The user rules by replying to either; their replies reset the cap, and
 `/pr-review <n>` restarts the loop.
 
+### Mark ready
+
+Runs when `open as draft` is `yes`, the PR is still a draft, and the
+latest review is `verdict=clean` on the current head with its nits
+decided: none open, or the user answered **Leave** (a **Fix** pushes
+again, so it waits for the re-review). Run `gh pr ready <n>`, then read
+`isDraft` back. That event is what starts CI, once, on reviewed code.
+
+- Never mark a draft ready for any other reason, CI included. A draft
+  that never reviewed clean stays a draft.
+- Not a push: it does not move the head or cost a round.
+- Then CI is the other half: continue with "Ship when both are green"
+  when nothing is open, or stop at the Leave report.
+
 ### Ship when both are green
 
 Runs when the review is `verdict=clean` with `pr-review-open 0/0/0`
@@ -216,7 +234,7 @@ marker lets it through.
     gh pr list --repo <repo> --state open --limit 100 \
       --json number,title,headRefOid,author,isDraft,updatedAt
 
-- **Drafts are excluded** unless `--drafts`. A draft is still moving.
+- **Drafts are excluded** unless `--drafts`, or `open as draft` is `yes`: then every PR is a draft until its review is clean, so a stalled one is only found by including them. Otherwise a draft is still moving.
 - Order **oldest `updatedAt` first**. The stalest PR is the one nobody has
   looked at.
 - If the list hits the 100 limit, **say so in chat**. Never truncate the

@@ -1,6 +1,6 @@
 {
   "name": "workflow",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Branch-to-merge skills (pick an issue, file one, review a PR, ship it, triage failures, clean up branches) plus repo operations skills (nightly triage, docs sweep, schema plans, database copy and reseed, release notes, team email). Each repo tunes them in .claude/skill-settings.md, with private values in a gitignored .claude/skill-settings.local.md.",
   "author": { "name": "kevon-vems" }
 }

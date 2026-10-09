@@ -100,7 +100,7 @@ Or `gh pr view --json ...` from the current branch when there is none.
 | Condition | Why it stops |
 |---|---|
 | `state` is not `OPEN` | already merged or closed; say which |
-| `isDraft` is true | a draft is still moving |
+| `isDraft` is true | a draft is still moving. When `open as draft` is `yes`, it never reviewed clean: point to `/pr-review`; marking it ready is the review loop's, not this skill's |
 | `mergeable` is `CONFLICTING` | conflicts are the author's call, not this skill's |
 | `mergeStateStatus` is `BLOCKED` | a required check or review gate is unmet |
 | A required check is failing, still running, or missing on the head | merges wait for green; a red PR merges only by a human's own hand |

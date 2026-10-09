@@ -5,6 +5,8 @@ Also read: `## Shared` keys `repo`, `base branch`, `worktree folder`, `human mer
 
 - start on PR open: yes
   - `yes`: the session that opens a PR starts the review loop at once, with no question. `no`: the loop starts only when asked. Default: `yes`.
+- open as draft: no
+  - `yes`: the session opens each PR with `gh pr create --draft`, and the review loop runs `gh pr ready` once the review is clean and any nits are decided. Use it when the repo's CI skips drafts, so CI runs once on reviewed code. The sweep then includes drafts. Default: `no`.
 - round cap: 3
   - Review rounds allowed since the user's last input before the loop stops and summarizes. Default: `3`.
 - cap reset:
