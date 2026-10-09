@@ -1,8 +1,8 @@
-export type Ci = 'passing' | 'failing' | 'running' | 'none'
+export type Ci = 'passing' | 'failing' | 'running' | 'skipped' | 'none'
 
 export type Review = { round: number; verdict: string; open?: string; sha?: string }
 
-export type Pr = { number: number; state: string; ci: Ci; running?: number; head?: string; issue?: number; review?: Review }
+export type Pr = { number: number; state: string; ci: Ci; running?: number; head?: string; issue?: number; review?: Review; stale?: boolean }
 
 export type Work = {
   worktree?: string

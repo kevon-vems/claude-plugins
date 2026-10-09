@@ -55,6 +55,12 @@ test('CI reads failing, running, passing and none', () => {
   expect(ciOf([{ status: 'IN_PROGRESS' }, { status: 'COMPLETED', conclusion: 'SUCCESS' }])).toBe('running')
   expect(ciOf([{ state: 'PENDING' }])).toBe('running')
   expect(ciOf([{ status: 'COMPLETED', conclusion: 'SUCCESS' }, { state: 'SUCCESS' }])).toBe('passing')
+  expect(ciOf([{ status: 'COMPLETED', conclusion: 'SKIPPED' }, { status: 'COMPLETED', conclusion: 'SKIPPED' }])).toBe('skipped')
+  expect(ciOf([{ status: 'COMPLETED', conclusion: 'SKIPPED' }, { status: 'COMPLETED', conclusion: 'SUCCESS' }])).toBe('passing')
+  expect(ciText({ number: 1, state: 'OPEN', ci: 'skipped' })).toBe('CI skipped - nothing ran')
+  expect(ciText({ number: 1, state: 'OPEN', ci: 'passing', stale: true })).toBe('CI passing (stale)')
+  expect(ciText({ number: 1, state: 'OPEN', ci: 'none', stale: true })).toBe('no CI yet (stale)')
+  expect(ciText({ number: 1, state: 'MERGED', ci: 'passing', stale: true })).toBe('CI passing')
 })
 
 const PR_5056 = [

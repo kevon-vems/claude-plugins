@@ -21,6 +21,7 @@ const skillPick = atom({ plugin: 'band', key: 'skillPick' } as const, null)
 
 const SCAN_MS = 30 * 1000
 const PR_MS = 60 * 1000
+const CI_MS = 15 * 1000
 
 type Check = { status?: string; conclusion?: string; state?: string }
 type Option = { value: string; label: string }
@@ -30,10 +31,13 @@ const FAILED = new Set(['FAILURE', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED', 
 const isFailed = (c: Check) => FAILED.has(c.conclusion ?? '') || FAILED.has(c.state ?? '')
 const isRunning = (c: Check) => (c.status !== undefined && c.status !== 'COMPLETED') || c.state === 'PENDING' || c.state === 'EXPECTED'
 
+const isSkipped = (c: Check) => c.conclusion === 'SKIPPED'
+
 export function ciOf(checks: Check[]): Ci {
   if (checks.length === 0) return 'none'
   if (checks.some(isFailed)) return 'failing'
   if (checks.some(isRunning)) return 'running'
+  if (checks.every(isSkipped)) return 'skipped'
   return 'passing'
 }
 
@@ -42,8 +46,14 @@ export function runningOf(checks: Check[]): number {
 }
 
 export function ciText(pr: Pr): string | undefined {
+  const text = ciLabel(pr)
+  return text && pr.stale && pr.state === 'OPEN' ? `${text} (stale)` : text
+}
+
+function ciLabel(pr: Pr): string | undefined {
   if (pr.ci === 'none') return pr.state === 'OPEN' ? 'no CI yet' : undefined
   if (pr.ci === 'failing' && pr.running) return `CI failing - ${pr.running} running`
+  if (pr.ci === 'skipped') return 'CI skipped - nothing ran'
   return `CI ${pr.ci}`
 }
 
@@ -274,7 +284,8 @@ async function refresh($: EngineInterface, timer = false): Promise<void> {
           review: reviewOf((j.reviews ?? []).map(x => x.body ?? '')),
         }
       } else {
-        pr = lastPr(prev, branch, r.stderr)
+        const last = lastPr(prev, branch, r.stderr)
+        pr = last && { ...last, stale: true }
       }
     }
     const [gitDir = '', commonDir = ''] = (await git('rev-parse', '--path-format=absolute', '--git-dir', '--git-common-dir')).split(/\r?\n/)
@@ -559,6 +570,7 @@ export const register: Register = on => {
     $.clock.every(BEAT_MS, () => void beat($))
     $.clock.every(SCAN_MS, () => void scan($))
     $.clock.every(PR_MS, () => void refresh($, true))
+    $.clock.every(CI_MS, () => void read($, work).then(w => { if (w?.pr?.state === 'OPEN' && (w.pr.ci === 'running' || w.pr.ci === 'none')) void refresh($, true) }))
     return started
   })
 
@@ -775,11 +787,11 @@ export const register: Register = on => {
         parts.push(<Text key="is">{`#${w.issue}`}</Text>)
       }
       if (w.pr) {
-        const ciColor = w.pr.ci === 'failing' ? 'red' : w.pr.ci === 'running' ? 'yellow' : w.pr.ci === 'passing' ? 'green' : undefined
+        const ciColor = w.pr.stale ? undefined : w.pr.ci === 'failing' ? 'red' : w.pr.ci === 'running' ? 'yellow' : w.pr.ci === 'passing' ? 'green' : undefined
         if (parts.length) parts.push(sep('p'))
         parts.push(<Text key="pr">{`PR #${w.pr.number}${w.pr.state === 'OPEN' ? '' : ` ${w.pr.state.toLowerCase()}`}`}</Text>)
         const ci = ciText(w.pr)
-        if (ci) parts.push(<Text key="ci" color={ciColor} dimColor={w.pr.ci === 'none'}>{`  ${ci}`}</Text>)
+        if (ci) parts.push(<Text key="ci" color={ciColor} dimColor={w.pr.stale || w.pr.ci === 'none' || w.pr.ci === 'skipped'}>{`  ${ci}`}</Text>)
         const review = reviewText(w.pr)
         if (review) {
           const color = w.pr.review?.verdict === 'clean' && !pushedSince(w.pr) ? 'green' : 'yellow'
