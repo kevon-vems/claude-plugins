@@ -88,6 +88,9 @@ If this skill finds it was started that way on such a PR anyway, step 3 runs.
 Resolve the PR.
 Bare invocation: whatever PR this session has been working on.
 Or `gh pr view --json ...` from the current branch when there is none.
+Never take it from the host's PR binding (`get_status`, `list_sessions`
+`prNumber`): it can be another session's PR. Use the worktree's branch:
+`gh pr list --head <branch> --repo <repo> --json number`.
 
     gh pr view <n> --repo <repo> --json \
       number,title,state,isDraft,mergeable,mergeStateStatus,headRefName,\
