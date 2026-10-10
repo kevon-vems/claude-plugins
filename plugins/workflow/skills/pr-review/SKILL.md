@@ -78,6 +78,11 @@ restarting a stalled cycle after ruling on its threads.
 **Resolve the PR.** A number or URL names it. Bare invocation targets
 the PR of the branch this session did write-work in; no PR in the
 session's context is a hard stop - ask which PR, never create one.
+Never take the PR from the host's PR binding (`get_status`, the PR
+bar, `list_sessions` `prNumber`): it follows the checkout the session
+was launched from, so a session started in a shared checkout reports
+another session's PR. Resolve by the branch of the worktree you work
+in: `gh pr list --head <branch> --repo <repo> --json number`.
 
 **Find the checkout.** `git -C <root> worktree list`, match the PR's
 `headRefName`. No local worktree for the branch -> create one with
@@ -93,7 +98,9 @@ to drop. Rulings are never re-litigated with the reviewer.
 **It starts when the PR opens** (when `start on PR open` is `yes`).
 The moment `gh pr create` returns, the session that opened it starts
 this loop: if the host offers PR binding (a `get_status` / `bind_pr`
-tool), bind the PR so CI is reported to the session, and spawn round 1
+tool), call `get_status` and compare its bound PR to the one just
+opened; if it differs or is empty, `bind_pr` the new PR's URL (the
+host may have bound the launch checkout's PR instead). Then spawn round 1
 **in the background**. When `open as draft` is `no`, the review runs
 while CI does. When it is `yes`, the PR was opened as a draft
 (`gh pr create --draft`) and the repo's CI skips drafts, so the review
