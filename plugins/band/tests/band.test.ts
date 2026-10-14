@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code/testing'
 import { DEFAULTS } from '../hooks/config.ts'
-import { ciOf, ciText, issueFor, issueOf, issueOfTitle, lastPr, live, moves, nextFocus, reviewOf, reviewText, runKey, runningOf, sayKey, settled, skillsOf, touchedIssue, worktreeOf } from '../hooks/register.tsx'
+import { ciOf, ciText, latestOf, issueFor, issueOf, issueOfTitle, lastPr, live, moves, nextFocus, reviewOf, reviewText, runKey, runningOf, sayKey, settled, skillsOf, touchedIssue, worktreeOf } from '../hooks/register.tsx'
 
 test('the PR title names the issue, last number wins', () => {
   expect(issueOfTitle('Show bid totals on the award page (#2528)')).toBe(2528)
@@ -416,4 +416,18 @@ test('the repo settings file sets the buttons and the issue pattern', async ($, 
   expect(await ui.find({ type: 'Button', text: 'Hello' })).toBeDefined()
   expect(await ui.find({ type: 'Button', text: 'Ship it' })).toBeUndefined()
   await ui.unmount()
+})
+
+const PR_5238 = [
+  { workflowName: 'PR check', name: 'Build', startedAt: '2026-10-14T14:42:26Z', status: 'COMPLETED', conclusion: 'CANCELLED' },
+  { workflowName: 'PR check', name: 'Build', startedAt: '2026-10-14T14:46:18Z', status: 'COMPLETED', conclusion: 'SUCCESS' },
+  { workflowName: 'PR check', name: 'Secret scan', startedAt: '2026-10-14T14:42:03Z', status: 'COMPLETED', conclusion: 'SUCCESS' },
+  { workflowName: 'PR check', name: 'Secret scan', startedAt: '2026-10-14T14:45:56Z', status: 'COMPLETED', conclusion: 'SUCCESS' },
+]
+
+test('a superseded run never paints CI red', () => {
+  expect(ciOf(latestOf(PR_5238))).toBe('passing')
+  expect(latestOf(PR_5238)).toHaveLength(2)
+  expect(ciOf(latestOf([...PR_5238, { workflowName: 'PR check', name: 'Build', status: 'QUEUED' }]))).toBe('running')
+  expect(latestOf([{ state: 'SUCCESS' }, { state: 'FAILURE' }])).toHaveLength(2)
 })

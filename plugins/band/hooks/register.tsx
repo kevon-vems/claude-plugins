@@ -23,8 +23,19 @@ const SCAN_MS = 30 * 1000
 const PR_MS = 60 * 1000
 const CI_MS = 15 * 1000
 
-type Check = { status?: string; conclusion?: string; state?: string }
+type Check = { status?: string; conclusion?: string; state?: string; name?: string; context?: string; workflowName?: string; startedAt?: string }
 type Option = { value: string; label: string }
+
+export function latestOf(checks: Check[]): Check[] {
+  const best = new Map<string, Check>()
+  const when = (c: Check) => c.startedAt || '￿'
+  checks.forEach((c, i) => {
+    const key = c.name || c.context ? `${c.workflowName ?? ''}\n${c.name ?? c.context}` : `#${i}`
+    const had = best.get(key)
+    if (!had || when(c) >= when(had)) best.set(key, c)
+  })
+  return [...best.values()]
+}
 
 const FAILED = new Set(['FAILURE', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED', 'ERROR', 'STARTUP_FAILURE'])
 
@@ -273,7 +284,7 @@ async function refresh($: EngineInterface, timer = false): Promise<void> {
           statusCheckRollup?: Check[]
           reviews?: { body?: string }[]
         }
-        const checks = j.statusCheckRollup ?? []
+        const checks = latestOf(j.statusCheckRollup ?? [])
         pr = {
           number: j.number,
           state: j.state,
