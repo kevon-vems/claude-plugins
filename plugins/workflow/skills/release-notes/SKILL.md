@@ -1,16 +1,14 @@
 ---
 name: release-notes
-description: Turn a finished production deploy into changelog entries and a team email. Lists the one-time steps the shipped PRs left for a human, classifies the merged PRs that actually shipped, emits a SQL script that inserts them into the product's changelog table as DRAFTS, and drafts the internal heads-up email. Use after a production deploy finishes, when the user types /release-notes or asks for release notes or the changelog for what just shipped.
+description: Turn a finished production deploy into DRAFT changelog entries. Classifies the merged PRs that actually shipped, asks which belong in the changelog, and emits a SQL script that inserts them into the product's changelog table as drafts, applied only on a click naming the file. Use after a production deploy finishes, when the user types /release-notes or asks for release notes or the changelog for what just shipped.
 ---
 
-# /release-notes - from a finished deploy to draft changelog entries and a team email
+# /release-notes - from a finished deploy to draft changelog entries
 
-Four outputs, in this order:
+Two outputs, in this order:
 
-1. A checklist of the one-time steps the shipped PRs left for a human.
-2. A classified list of what shipped that a user can see.
-3. A SQL script inserting those items into the changelog table as **drafts**.
-4. An internal email draft telling the team what shipped and what is waiting for review.
+1. A classified list of what shipped that a user can see.
+2. A SQL script inserting those items into the changelog table as **drafts**.
 
 The changelog already exists in the product.
 This skill does not invent one; it feeds the one the product has.
@@ -18,6 +16,10 @@ Where that changelog shows up (admin authoring, an in-app page, a public page, a
 
 Deploys run from `deploy source`, never from a session.
 This skill runs after one finishes and derives everything itself.
+
+**The team heads-up is not this skill's job.**
+The deploy's own report (`deploy source`) tells the team what went live and lists the one-time steps the shipped PRs left for a human.
+This skill does not repeat either, and sends no email.
 
 ## 0. Read the settings
 
@@ -46,7 +48,6 @@ Values this skill uses. `(local)` keys belong in `skill-settings.local.md`.
 | `deploy source` (local) | Release notes | none: the user names the deploy that finished |
 | `user-facing app` | Release notes | the app signed-in users use (usually the website) |
 | `background apps` (local) | Release notes | none |
-| `after deploy heading` | Release notes | `## After deploy` |
 | `flag state command` | Release notes | none: ask the user each flag's production state |
 | `flag notes` (local) | Release notes | none |
 | `changelog surfaces` (local) | Release notes | none |
@@ -63,16 +64,13 @@ Values this skill uses. `(local)` keys belong in `skill-settings.local.md`.
 | `review tool` (local) | Release notes | none |
 | `changelog reviewer` | Release notes | the operator |
 | `operator` | Release notes | the person `git config user.name` names |
-| `operator profile` | Release notes | none: ask the operator's product email and signature once |
+| `operator profile` | Release notes | none: ask the operator's product email once |
 | `release log folder` | Release notes | **required** |
 | `release log template` | Release notes | none: create an empty folder |
-| `log file` | Release notes | none: step 6 is skipped |
+| `log file` | Release notes | none: step 5 is skipped |
 | `apply script` | Release notes | none: step 4b hands over the path and stops |
 | `apply login` (local) | Release notes | none |
 | `apply setup` (local) | Release notes | none |
-| `email template` | Release notes | none: plain, simple HTML |
-| `recipients` | Release notes | none: ask the operator |
-| `send command` | Release notes | none: hand the file over; the operator sends it |
 | `product name rule` | Release notes | none |
 
 **Where the table shape comes from.**
@@ -149,38 +147,6 @@ gh pr view <number> --repo <repo> --json title,body,labels
 **A background app's change counts only if** that app was actually deployed in this run AND the change is visible to a user.
 For a mail app, visible means a message they receive.
 `background apps` names them.
-
-## 1b. The one-time steps
-
-Before any changelog work, list what someone has to run by hand now that this release is live.
-This step reads **every** PR in the range, internal ones included: a data repair usually rides on a PR the changelog drops.
-
-A PR records its steps under a heading of exactly `after deploy heading`.
-Take everything from that heading to the next `##` heading or the end of the body:
-
-```bash
-gh pr view <number> --repo <repo> --json number,title,body
-```
-
-**A PR without the heading can still carry a step.**
-When its body talks about a one-time repair, a script to run once, or SQL to run by hand:
-
-- list it as a **possible** step, marked as a guess
-- quote the lines that made it one
-- never promote a guess to a step without the operator saying so
-
-Show one checklist in chat, grouped by PR, before step 2:
-
-    After deploy - 2 steps from 1 PR, 1 possible
-    #101  Fix the order date rollover (#88)
-      - [ ] Repair the order dates. Production. The operator, by hand.
-            <the SQL, verbatim, formatted to be read>
-    #107  (possible) "run the backfill once per database"
-
-- **Copy each step verbatim.** Do not shorten the SQL or reword the command; the operator runs what the PR author wrote.
-- **Never run a step.** Production writes are a human's. The one sanctioned production write in this skill is the changelog file (step 4b).
-- Not a query to "check" a step either: the checklist hands the steps over; it does not verify them.
-- **None found is said in one line**, and the skill moves on.
 
 ## 2. Classify
 
@@ -283,7 +249,7 @@ Rules the script must follow:
 - **A skipped slug says so.**
   - The slug is unique (`unique index`), so every insert is guarded on the slug alone.
   - A guard that skips must `PRINT` which slug it skipped and why.
-  - Silence is the failure mode: the email reports what the file contains, and an insert that quietly did nothing makes that report wrong.
+  - Silence is the failure mode: the report in step 4b says what the file inserted, and an insert that quietly did nothing makes that report wrong.
 - **Match on the slug, never on slug plus title.**
   - A title comparison looks like a sharper collision check and is not.
   - This skill's own design has a human EDIT each draft. Re-applying the file after that edit sees a changed title on a row it created itself, and a `THROW` there aborts every later item over a workflow that went exactly as intended.
@@ -369,55 +335,21 @@ Then call the script from the main checkout, in forward-slash form (see "The mai
 
 The argument name is whatever `apply script` documents; `-InputFile` is the default.
 
-- **Report what the script printed, including every `PRINT` line.** A skipped slug is the one outcome the email would otherwise get wrong.
+- **Report what the script printed, including every `PRINT` line.** A skipped slug is the one outcome that changes what the reviewer will find.
+- Then name `changelog reviewer` and `review tool` in one line: the drafts are waiting there to be reviewed, edited and published.
 - If the operator declines, hand over the path and stop. Do not re-ask.
 
 **A missing credential on a first run is setup, not a failure.**
 `apply setup` says what a person runs once to provision it.
 Say it once and move on.
 
-## 5. The email
-
-Internal, to the team.
-The customer-facing announcement is the changelog itself, so this email is the heads-up, not the announcement.
-
-- Formatted **HTML**, from `email template`.
-- **Signed by the OPERATOR**, exactly as `operator profile` defines it.
-  Never the owner of the folder the draft lands in: that location says nothing about who is speaking.
-- Saved beside the SQL as `email-release-YYYY-MM-DD.html`.
-
-It covers, in this order:
-
-1. **What shipped, as features and fixes.** Two sections, New and Fixed, each item in the words a user would use.
-2. **The changelog review.** Name `changelog reviewer`, ask them to review the drafts in `review tool`, edit anything that does not read right, and publish.
-
-Rules for the email:
-
-- **Admin-only work belongs in this email**, even though step 2 keeps it out of the changelog.
-  - The changelog is what a customer reads; the email is what the team reads, and a new admin screen is squarely the team's business.
-  - Dropping it from both is how a release that shipped four things gets announced as one.
-- **Never list which applications were deployed.** No service table, no per-app lines, no shas. The team does not need it, and it buries the release under plumbing.
-- **Never mention how the deploy went unless the operator asks.** A retry, an outage, a rolled-back setting, a step that needed a second attempt: none of it belongs here. It is a release note, not an incident report.
-- **Assume the changelog entries are drafts and hand them to the reviewer**, whether or not this run wrote any SQL. Nothing reaches a customer until they publish.
-
-**Claude sends it, on the operator's word.**
-
-- Follow the draft-and-send loop `operator profile` sets out, if it sets one.
-- Otherwise: draft it, surface it RENDERED so it is read the way a recipient will see it, iterate in chat, send only when the operator says to.
-- Never in the same turn that first shows the draft, and never on silence.
-- Recipients come from `recipients`, never typed from memory.
-- The send goes through `send command`. No command set: hand the file over; the operator sends it.
-- Never through a mail client API that strips inline styles, classes or images: a templated email arrives stripped of everything that made it one.
-- Report what the send command printed. Its output is the record of the send; never claim a send it did not report.
-
-## 6. Log it
+## 5. Log it
 
 Append one line to the `## Log` of `log file`:
 
 - the date
 - what shipped
 - how many draft entries were created
-- how many one-time steps step 1b handed over, naming their PRs
 
 Applying the SQL gets its own line, naming the count inserted and any slug the script skipped.
 
@@ -431,4 +363,4 @@ No `log file` set: skip this step and say so in one line.
   - a click that names the file before it is applied
 - Never restate a PR body as changelog copy. A PR is written for a reviewer.
 - Follow `product name rule` in every string a reader sees.
-- Never an em-dash or en-dash in the SQL or the email file; use a single hyphen.
+- Never an em-dash or en-dash in the SQL file; use a single hyphen.

@@ -12,8 +12,6 @@ Keys marked `(local)` hold values that must never be published. Put them in `.cl
   - The app whose deploy defines the release range. Its deploy skipped or failed means nothing to announce.
 - background apps: none (local)
   - One line per app whose change counts only if it deployed in this run and a user sees it (a mail app: a message they receive).
-- after deploy heading: ## After deploy
-  - The exact PR-body heading that holds one-time steps. Step 1b collects them from every PR in the range.
 - flag state command: none
   - Command that prints each feature flag's state in PRODUCTION. `<sha>` stands for the now-live sha. Default: ask the user each flag's state; never read it from code.
 - flag notes: none (local)
@@ -43,29 +41,23 @@ Keys marked `(local)` hold values that must never be published. Put them in `.cl
 - review tool: none (local)
   - Where the reviewer edits and publishes a draft.
 - changelog reviewer: the operator
-  - Who reviews and publishes the drafts. Named in the email.
+  - Who reviews and publishes the drafts. Named once the drafts are applied.
 - operator: git config user.name
   - How to find the person running this deploy, e.g. a machine-to-person map. Never the owner of the release log folder.
 - operator profile: none
-  - The operator's file holding their product email, signature and draft-and-send loop. `<operator>` stands for the person. Default: ask the operator once.
+  - The operator's file holding their product email. `<operator>` stands for the person. Default: ask the operator once.
 - release log folder: none (required)
-  - The ONE folder every changelog SQL file and release email lands in. Step 1 reads the newest file's first line from here.
+  - The ONE folder every changelog SQL file lands in. Step 1 reads the newest file's first line from here.
 - release log template: none
   - Folder copied to create the release log folder on first run. Default: an empty folder.
 - log file: none
-  - File in the release log folder whose `## Log` gets a line per run. Default: none, step 6 is skipped.
+  - File in the release log folder whose `## Log` gets a line per run. Default: none, step 5 is skipped.
 - apply script: none
   - Script, relative to the main checkout, that applies the SQL file to production. Default: none, the path is handed over.
 - apply login: none (local)
   - The database login the apply script uses and what it may do.
 - apply setup: none (local)
   - What a person runs once when the apply script's credential is missing: secret name, provisioning command, firewall needs.
-- email template: none
-  - HTML template for the team email. Default: plain, simple HTML.
-- recipients: none
-  - Where the team's addresses come from. Never typed from memory. Default: ask the operator.
-- send command: none
-  - Command that sends the email file. Default: none, the operator sends it.
 - product name rule: none
   - How the product's name is written in copy a reader sees.
 - One plain bullet per house rule /release-notes follows as if it were written in the skill.
