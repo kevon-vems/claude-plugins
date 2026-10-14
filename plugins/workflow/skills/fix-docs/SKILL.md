@@ -150,7 +150,8 @@ For each doc in scope, one sub-agent:
 ### 3. Land it
 
 - One worktree branch, one commit per coherent group, one PR.
-- Then run the normal review loop: spawn `workflow:pr-reviewer` with only the PR number, fix what gates, and let it rule on any pushback.
+- Open the PR the way `open as draft` says: read it from `## PR review` in the same two settings files as step 0 (default `no`). When it is `yes`, open it with `gh pr create --draft`.
+- Then run the normal review loop, the `/pr-review` skill: it spawns `workflow:pr-reviewer` with only the PR number, fixes what gates, lets the reviewer rule on any pushback, and marks a draft ready once the review is clean.
 
 ## What you never do
 
