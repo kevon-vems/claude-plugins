@@ -855,7 +855,6 @@ export const register: Register = on => {
               <Button key="skills-run" label={picked && runKey(picked) in waiting ? 'Run (queued)' : 'Run'} dimColor={!!picked && runKey(picked) in waiting} onPress={() => void (picked && fire($, { label: picked, run: picked }))} />
             </Box>
           ) : null}
-          {Object.keys(waiting).length > 0 ? <Text key="busy" dimColor>queued, runs when Claude is free</Text> : null}
         </Box>
       </Box>
     )
