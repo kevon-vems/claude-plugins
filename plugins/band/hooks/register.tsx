@@ -13,6 +13,7 @@ import { BEAT_MS, GONE_MS, PRUNE_MS, beatOf, fleetDir, fleetOf, nameOf, parseBea
 const work = atom({ plugin: 'band', key: 'work' } as const, null)
 const focus = atom({ plugin: 'band', key: 'focus' } as const, null)
 const pending = atom({ plugin: 'band', key: 'pending' } as const, {})
+const shade = atom({ plugin: 'band', key: 'shade' } as const, {})
 const fleet = atom({ plugin: 'band', key: 'fleet' } as const, [])
 const handoff = atom({ plugin: 'band', key: 'handoff' } as const, null)
 const wrapup = atom({ plugin: 'band', key: 'wrapup' } as const, null)
@@ -169,6 +170,13 @@ export function skillsOf(commands: CommandInfo[], mine: string[], extra: string[
 }
 
 const STALE_MS = 30 * 60 * 1000
+export const QUEUED_MS = 1000
+export const FADE = ['subtle', 'inactive', 'text'] as const
+const FADE_STEP_MS = 100
+
+export function holdLeft(elapsed: number): number {
+  return Math.max(0, QUEUED_MS - FADE.length * FADE_STEP_MS - elapsed)
+}
 
 export const runKey = (command: string) => `run:${command.replace(/^\//, '').trim()}`
 export const sayKey = (text: string) => `say:${text.trim().toLowerCase()}`
@@ -208,21 +216,40 @@ async function fire($: EngineInterface, b: BandButton): Promise<void> {
     firing.set(key, mine)
   }
   let queued = false
+  let fadeIn: Promise<void> = Promise.resolve()
   try {
     if (key in live(await read($, pending), now)) return
     await update($, pending, w => ({ ...live(w, now), [key]: now }))
     queued = true
+    fadeIn = fadeThrough($, key, FADE)
     if (b.run) await $.command.run({ command: b.run })
     else if (b.say) await $.prompt.submit({ text: b.say, asUser: true })
   } catch (err) {
     $.ui.log(`band: ${key} failed: ${String(err)}`, { to: 'debug' })
   } finally {
-    if (queued) await release($, key, now)
+    if (queued) {
+      await fadeIn
+      const left = holdLeft((await $.clock.now()) - now)
+      if (left > 0) await $.clock.sleep(left).catch(() => undefined)
+      await fadeThrough($, key, [...FADE].reverse())
+      await release($, key, now)
+    }
     if (firing.get(key) === mine) firing.delete(key)
   }
 }
 
+async function fadeThrough($: EngineInterface, key: string, steps: readonly string[]): Promise<void> {
+  for (const s of steps) {
+    await update($, shade, w => ({ ...w, [key]: s }))
+    await $.clock.sleep(FADE_STEP_MS).catch(() => undefined)
+  }
+}
+
 async function release($: EngineInterface, key: string, at: number): Promise<void> {
+  await update($, shade, w => {
+    const { [key]: _gone, ...rest } = w
+    return rest
+  })
   if ((await read($, pending))[key] !== at) return
   await update($, pending, w => {
     if (w[key] !== at) return w
@@ -564,6 +591,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await update($, pending, () => ({}))
+    await update($, shade, () => ({}))
     selfId = await $.session.id()
     home = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME'))
     since = await $.clock.now()
@@ -826,6 +854,13 @@ export const register: Register = on => {
     meter('wk', 'week', week)
     const now = await $.clock.now()
     const waiting = live(await read($, pending), now)
+    const shades = await read($, shade)
+    const queued = (key: string, button: unknown) => (
+      <Box key={`q-${key}`} columnGap={1} alignItems="center">
+        {button}
+        <Text color={shades[key] ?? FADE[0]}>(queued)</Text>
+      </Box>
+    )
     const rows = await read($, fleet)
     const shared = sharedWith(rows, selfId)
     if (shared > 0) {
@@ -840,20 +875,18 @@ export const register: Register = on => {
           {buttonsOf(cfg.buttons, have).map(b => {
             const key = b.run ? runKey(b.run) : b.say ? sayKey(b.say) : ''
             const held = key in waiting
-            return (
-              <Button
-                key={`b-${b.label}`}
-                label={held ? `${b.label} (queued)` : b.label}
-                dimColor={held}
-                onPress={() => void fire($, b)}
-              />
-            )
+            const button = <Button key={`b-${b.label}`} label={b.label} dimColor={held} onPress={() => void fire($, b)} />
+            return held ? queued(key, button) : button
           })}
           <Button key="b-skills" label="Manage skills" onPress={() => void openSkills($)} />
           {skills.length > 0 ? (
             <Box key="skills" marginLeft={2} columnGap={1} alignItems="center">
               <Select key="skills" label="Skills" options={skills} value={picked} onSelect={value => void update($, skillPick, () => value)} />
-              <Button key="skills-run" label={picked && runKey(picked) in waiting ? 'Run (queued)' : 'Run'} dimColor={!!picked && runKey(picked) in waiting} onPress={() => void (picked && fire($, { label: picked, run: picked }))} />
+              {picked && runKey(picked) in waiting ? (
+                queued(runKey(picked), <Button key="skills-run" label="Run" dimColor onPress={() => void fire($, { label: picked, run: picked })} />)
+              ) : (
+                <Button key="skills-run" label="Run" onPress={() => void (picked && fire($, { label: picked, run: picked }))} />
+              )}
             </Box>
           ) : null}
         </Box>

@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code/testing'
 import { DEFAULTS } from '../hooks/config.ts'
-import { ciOf, ciText, latestOf, issueFor, issueOf, issueOfTitle, lastPr, live, moves, nextFocus, reviewOf, reviewText, runKey, runningOf, sayKey, settled, skillsOf, touchedIssue, worktreeOf } from '../hooks/register.tsx'
+import { ciOf, ciText, latestOf, issueFor, issueOf, holdLeft, issueOfTitle, lastPr, live, QUEUED_MS, moves, nextFocus, reviewOf, reviewText, runKey, runningOf, sayKey, settled, skillsOf, touchedIssue, worktreeOf } from '../hooks/register.tsx'
 
 test('the PR title names the issue, last number wins', () => {
   expect(issueOfTitle('Show bid totals on the award page (#2528)')).toBe(2528)
@@ -180,6 +180,11 @@ test('a queued entry expires after half an hour', () => {
   expect(live({ 'run:shipit': 0, 'say:go': 1000 }, 30 * 60 * 1000 + 500)).toEqual({ 'say:go': 1000 })
 })
 
+test('queued stays up a full second, fades included, unless the run took longer', () => {
+  expect(holdLeft(0)).toBe(QUEUED_MS - 300)
+  expect(holdLeft(QUEUED_MS)).toBe(0)
+})
+
 test('keys ignore a leading slash, case and spacing', () => {
   expect(runKey('/shipit')).toBe(runKey('shipit'))
   expect(sayKey(' Go ')).toBe(sayKey('go'))
@@ -191,7 +196,7 @@ const gitDirs = (top: string) =>
 const BAND = { component: 'AbovePrompt', props: { hasSurvey: false, isWorking: true, maxRows: 10, bodyColumns: 120 } } as const
 
 test('a button pressed twice before its command runs sends it once', async ($, on) => {
-  mock.clock(on)
+  const clock = mock.clock(on)
   let runs = 0
   let finish = () => {}
   const held = new Promise<void>(r => { finish = r })
@@ -210,7 +215,11 @@ test('a button pressed twice before its command runs sends it once', async ($, o
   await Promise.all([first, second])
   expect(runs).toBe(1)
   await ui.press({ key: 'b-Ship it' })
+  expect(runs).toBe(1)
+  await clock.advance(QUEUED_MS)
+  await ui.press({ key: 'b-Ship it' })
   expect(runs).toBe(2)
+  await clock.advance(QUEUED_MS)
   await ui.unmount()
 })
 
