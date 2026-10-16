@@ -18,7 +18,7 @@ test('a skill file splits into its description and body', () => {
 const PANE = { component: 'Pane', requestId: 'band-skills', props: { title: 'Skills', isFocused: false, bodyColumns: 120, placement: 'dock' } } as const
 const fwd = (p: string) => p.replace(/\\/g, '/')
 
-function world(on: On, listFails = false) {
+function world(on: On, listFails: false | string = false) {
   const runs: string[] = []
   const writes: string[] = []
   on('session.id', () => ({ value: 'me' }) as never)
@@ -36,7 +36,7 @@ function world(on: On, listFails = false) {
   on('fs.list', (_$, e) => {
     const p = fwd((e as { path: string }).path)
     if (!p.endsWith('.claude/skills')) return { value: [] } as never
-    if (listFails) return { deny: 'EACCES' } as never
+    if (listFails) return { deny: listFails } as never
     return { value: [
       { name: 'shipit', kind: 'dir', size: 0, mtimeMs: 0, isLink: false },
       { name: 'README.md', kind: 'file', size: 1, mtimeMs: 0, isLink: false },
@@ -83,7 +83,7 @@ test('the pane opens on the first repo skill and deletes it only after the confi
 
 test('a listing that fails is named, not shown as no skills', async ($, on) => {
   const clock = mock.clock(on)
-  world(on, true)
+  world(on, 'EACCES')
   await $.session.start({ cwd: 'C:/repo', surface: 'desktop' } as never)
   await settle(clock)
   await $.command.run({ command: 'skills-panel', args: '' } as never)
@@ -91,5 +91,17 @@ test('a listing that fails is named, not shown as no skills', async ($, on) => {
   const ui = await $.ui.mount({ plugin: 'band', surface: 'desktop', ...PANE } as never)
   expect(JSON.stringify(await ui.drawn())).toMatch(/Could not list \.claude\/skills: [^"]*EACCES/)
   expect(await ui.find({ type: 'Text', text: 'No skills found.' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a checkout with no skills folder lists no repo skills, not an error', async ($, on) => {
+  const clock = mock.clock(on)
+  world(on, 'ENOENT')
+  await $.session.start({ cwd: 'C:/repo', surface: 'desktop' } as never)
+  await settle(clock)
+  await $.command.run({ command: 'skills-panel', args: '' } as never)
+  await settle(clock)
+  const ui = await $.ui.mount({ plugin: 'band', surface: 'desktop', ...PANE } as never)
+  expect(JSON.stringify(await ui.drawn())).not.toMatch(/Could not list/)
   await ui.unmount()
 })

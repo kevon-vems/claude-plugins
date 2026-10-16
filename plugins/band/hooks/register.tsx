@@ -480,7 +480,8 @@ async function openSkills($: EngineInterface): Promise<void> {
     const cwd = await $.session.cwd()
     const r = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd, timeoutMs: 10000 })
     top = r.exitCode === 0 ? r.stdout.trim() : undefined
-    const repo = top ? (await $.fs.list(`${top}/.claude/skills`)).filter(d => d.kind === 'dir').map(d => d.name) : []
+    const listed = top ? await $.fs.list(`${top}/.claude/skills`).catch(err => { if (/ENOENT/.test(String(err))) return []; throw err }) : []
+    const repo = listed.filter(d => d.kind === 'dir').map(d => d.name)
     await update($, skillView, () => ({ top, rows: skillRows(repo, cfg.extraSkills) }))
   } catch (err) {
     await update($, skillView, () => ({ top, rows: skillRows([], cfg.extraSkills), failed: String(err) }))
