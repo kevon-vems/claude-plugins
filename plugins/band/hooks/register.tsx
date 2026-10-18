@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { CommandInfo, EngineInterface, Register } from 'claude-code'
 
-import type { Activity, Beat, Handoff, Report, Wrapup, Ci, FleetRow, Pr, Review, Work } from '../types'
+import type { Activity, Beat, Claim, Handoff, Report, Wrapup, Ci, FleetRow, Pr, Review, Work } from '../types'
 import { DEFAULTS, MARKETPLACE, PLUGIN, SETTINGS_FILE, configOf } from './config'
 import type { BandButton, BandConfig } from './config'
 import { UPDATE_DELAY_MS, due, ownPlugins } from './update'
@@ -11,6 +11,7 @@ import { HANDOFF_PANE, cleanHandoff, handoffPrompt, targetsOf } from './handoff'
 import { BEAT_MS, GONE_MS, PRUNE_MS, beatOf, fleetDir, fleetOf, nameOf, parseBeat, pushedSince, sharedWith } from './fleet'
 
 const work = atom({ plugin: 'band', key: 'work' } as const, null)
+const claim = atom({ plugin: 'band', key: 'claim' } as const, null)
 const focus = atom({ plugin: 'band', key: 'focus' } as const, null)
 const pending = atom({ plugin: 'band', key: 'pending' } as const, {})
 const shade = atom({ plugin: 'band', key: 'shade' } as const, {})
@@ -150,6 +151,22 @@ const MOVES = /\bgh\s+(pr|issue)\b|\bgit\s+(-C\s+\S+\s+)?(checkout|switch|worktr
 
 export function moves(command: string): boolean {
   return MOVES.test(command)
+}
+
+export type GitOp = {
+  push?: { branch: string }
+  pr?: { number: number; action: string }
+}
+
+export function claimOf(prev: Claim | null, op: GitOp | undefined): Claim | null {
+  if (!op) return prev
+  if (op.pr) {
+    if (op.pr.action === 'merged' || op.pr.action === 'closed') return prev?.number === op.pr.number ? null : prev
+    const branch = op.push?.branch ?? (prev?.number === undefined || prev.number === op.pr.number ? prev?.branch : undefined)
+    return { number: op.pr.number, branch }
+  }
+  if (op.push && isFeature(op.push.branch) && op.push.branch !== prev?.branch) return { branch: op.push.branch }
+  return prev
 }
 
 export function buttonsOf(all: BandButton[], have: Set<string> | undefined): BandButton[] {
@@ -294,12 +311,14 @@ async function refresh($: EngineInterface, timer = false): Promise<void> {
     const branch = await git('rev-parse', '--abbrev-ref', 'HEAD')
     if (branch && seenBranch && branch !== seenBranch) branchTick = ++tick
     if (branch) seenBranch = branch
-    const feature = isFeature(branch)
+    const claimed = isFeature(branch) ? null : await read($, claim)
+    let shown = claimed ? claimed.branch ?? '' : branch
+    const target = claimed ? (claimed.number !== undefined ? String(claimed.number) : claimed.branch) : isFeature(branch) ? branch : undefined
     const prev = await read($, work)
-    let pr: Pr | undefined = feature && timer ? settled(prev, branch) : undefined
-    if (feature && !pr) {
+    let pr: Pr | undefined = target && timer && shown ? settled(prev, shown) : undefined
+    if (target && !pr) {
       const r = await $.process.run(
-        ['gh', 'pr', 'view', branch, '--json', 'number,state,title,headRefOid,statusCheckRollup,reviews'],
+        ['gh', 'pr', 'view', target, '--json', 'number,state,title,headRefName,headRefOid,statusCheckRollup,reviews'],
         { cwd, timeoutMs: 20000 },
       )
       if (r.exitCode === 0) {
@@ -307,9 +326,14 @@ async function refresh($: EngineInterface, timer = false): Promise<void> {
           number: number
           state: string
           title?: string
+          headRefName?: string
           headRefOid?: string
           statusCheckRollup?: Check[]
           reviews?: { body?: string }[]
+        }
+        if (claimed && !shown && j.headRefName) {
+          shown = j.headRefName
+          await update($, claim, c => (c && c.number === j.number ? { ...c, branch: shown } : c))
         }
         const checks = latestOf(j.statusCheckRollup ?? [])
         pr = {
@@ -322,15 +346,16 @@ async function refresh($: EngineInterface, timer = false): Promise<void> {
           review: reviewOf((j.reviews ?? []).map(x => x.body ?? '')),
         }
       } else {
-        const last = lastPr(prev, branch, r.stderr)
+        const last = lastPr(prev, shown, r.stderr)
         pr = last && { ...last, stale: true }
       }
     }
     const [gitDir = '', commonDir = ''] = (await git('rev-parse', '--path-format=absolute', '--git-dir', '--git-common-dir')).split(/\r?\n/)
     const worktree = worktreeOf(top, gitDir, commonDir)
     const focused = focusTick >= branchTick ? (await read($, focus)) ?? undefined : undefined
-    const issue = issueFor({ feature, prOpen: pr?.state === 'OPEN', titled: pr?.issue, named: issueOf(branch, cfg.issueBranch), focus: focused })
-    const next: Work | null = worktree || issue || feature ? { worktree, branch, issue, pr } : null
+    const feature = isFeature(shown)
+    const issue = issueFor({ feature, prOpen: pr?.state === 'OPEN', titled: pr?.issue, named: issueOf(shown, cfg.issueBranch), focus: focused })
+    const next: Work | null = worktree || issue || feature ? { worktree, branch: shown, issue, pr } : null
     await update($, work, () => next)
     if (home && selfId) await beat($)
   } catch (err) {
@@ -628,8 +653,15 @@ export const register: Register = on => {
   for (const tool of ['Bash', 'PowerShell']) {
     on('tool.call', { tool }, async ($, e, next) => {
       const ran = await next(e)
+      const op = ran.deny === undefined ? (ran.result as { gitOperation?: GitOp } | undefined)?.gitOperation : undefined
+      const held = op ? await read($, claim) : null
+      const claimed = op ? claimOf(held, op) !== held : false
+      if (claimed) await update($, claim, c => claimOf(c, op))
       const command = (e as { command?: unknown }).command
-      if (typeof command !== 'string') return ran
+      if (typeof command !== 'string') {
+        if (claimed) void refresh($)
+        return ran
+      }
       const t = ran.deny === undefined && !ran.isError ? touchedIssue(command, ran.text ?? '') : undefined
       if (t) {
         const was = await read($, focus)
@@ -637,7 +669,7 @@ export const register: Register = on => {
         if (now !== was || !t.closed) focusTick = ++tick
         await update($, focus, () => now)
       }
-      if (t || moves(command)) void refresh($)
+      if (t || claimed || moves(command)) void refresh($)
       return ran
     })
   }

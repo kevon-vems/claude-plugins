@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code/testing'
 import { DEFAULTS } from '../hooks/config.ts'
-import { ciOf, ciText, latestOf, issueFor, issueOf, holdLeft, issueOfTitle, lastPr, live, QUEUED_MS, moves, nextFocus, reviewOf, reviewText, runKey, runningOf, sayKey, settled, skillsOf, touchedIssue, worktreeOf } from '../hooks/register.tsx'
+import { ciOf, ciText, claimOf, latestOf, issueFor, issueOf, holdLeft, issueOfTitle, lastPr, live, QUEUED_MS, moves, nextFocus, reviewOf, reviewText, runKey, runningOf, sayKey, settled, skillsOf, touchedIssue, worktreeOf } from '../hooks/register.tsx'
 
 test('the PR title names the issue, last number wins', () => {
   expect(issueOfTitle('Show bid totals on the award page (#2528)')).toBe(2528)
@@ -18,6 +18,26 @@ test('a gh issue command names the issue this session is on', () => {
   expect(touchedIssue('gh issue create --title x', 'failed')).toBeUndefined()
   expect(touchedIssue('gh issue list --state open')).toBeUndefined()
   expect(touchedIssue('git status')).toBeUndefined()
+})
+
+test('the PR this session opened is remembered whatever folder its shell is in', () => {
+  const pushed = claimOf(null, { push: { branch: 'claude/5612-totals' } })
+  expect(pushed).toEqual({ branch: 'claude/5612-totals' })
+  const opened = claimOf(pushed, { pr: { number: 5619, action: 'created' } })
+  expect(opened).toEqual({ number: 5619, branch: 'claude/5612-totals' })
+  expect(claimOf(opened, { pr: { number: 5619, action: 'ready' } })).toEqual(opened)
+  expect(claimOf(opened, { push: { branch: 'claude/5612-totals' } })).toBe(opened)
+  expect(claimOf(opened, { push: { branch: 'main' } })).toBe(opened)
+  expect(claimOf(opened, undefined)).toBe(opened)
+})
+
+test('a different PR replaces the claim, and merging or closing it clears it', () => {
+  const opened = { number: 5619, branch: 'claude/5612-totals' }
+  expect(claimOf(opened, { pr: { number: 5700, action: 'created' } })).toEqual({ number: 5700, branch: undefined })
+  expect(claimOf(opened, { push: { branch: 'claude/other' } })).toEqual({ branch: 'claude/other' })
+  expect(claimOf(opened, { pr: { number: 5619, action: 'merged' } })).toBeNull()
+  expect(claimOf(opened, { pr: { number: 5619, action: 'closed' } })).toBeNull()
+  expect(claimOf(opened, { pr: { number: 4000, action: 'merged' } })).toBe(opened)
 })
 
 test('the session issue moves to the newest one, and closing it clears it', () => {

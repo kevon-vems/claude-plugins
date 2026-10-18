@@ -11,6 +11,8 @@ export type Work = {
   pr?: Pr
 }
 
+export type Claim = { number?: number; branch?: string }
+
 export type Activity = 'asking' | 'waiting' | 'working' | 'ended'
 
 export type Beat = {
@@ -67,6 +69,6 @@ export type SkillView = {
 
 declare module 'claude-code' {
   interface PluginState {
-    band: { work: Work | null; focus: number | null; pending: Record<string, number>; shade: Record<string, string>; fleet: FleetRow[]; handoff: Handoff | null; wrapup: Wrapup | null; skillView: SkillView | null; skillPick: string | null }
+    band: { work: Work | null; claim: Claim | null; focus: number | null; pending: Record<string, number>; shade: Record<string, string>; fleet: FleetRow[]; handoff: Handoff | null; wrapup: Wrapup | null; skillView: SkillView | null; skillPick: string | null }
   }
 }
