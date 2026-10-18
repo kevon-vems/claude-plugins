@@ -26,7 +26,5 @@ Read by /nightly. Repo, base branch, branch prefix and merge rules come from `##
   - The file that lists detector code kept on purpose, each with a reason.
 - dead code proof: none
   - The command that proves a detector delete lost no rows. `<root>` is `git rev-parse --show-toplevel`.
-- verify label: Launch verification run
-  - The option label the fix session shows before it starts the verification run.
 - date format: YYYY-MM-DD
   - How dates are written in the report.

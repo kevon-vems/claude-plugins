@@ -54,7 +54,6 @@ A key in both files takes the local value.
 | `<test claim>` | `test claim` | the repo's way of naming the test that covers a page or action |
 | `<dead code keep>` | `dead code keep file` | none |
 | `<dead code proof>` | `dead code proof` | none |
-| `<verify label>` | `verify label` | `Launch verification run` |
 | `<date format>` | `date format` | `YYYY-MM-DD` |
 
 ## 1. Find the run
@@ -68,7 +67,7 @@ The second is the previous run; step 5 needs its `createdAt`.
 - **Older than `<stale hours>` hours, or none:** the nightly did not run. Say so, link the Actions tab, and stop.
 - **Still running:** say so and stop. Do not wait on it.
 
-A run started by hand during the day (a fix session's verification run) is read the same way as the scheduled one.
+A run started by hand during the day is read the same way as the scheduled one.
 
 Download its artifact:
 
@@ -233,20 +232,11 @@ The prompt carries:
   One branch at a time, each merged before the next.
   A change under `<human merges>` is a PR a person merges.
 - the limits: no GitHub issue for a failure, a gap or a notice.
-  No test run except the verification run below.
+  No test run.
 - the label rule, when `<caught label>` is set:
   - When an item's root cause is a real product bug (not the test, the pipeline or the environment), the PR that fixes it gets `<caught label>`.
   - One label per bug: an issue gets it only when the session files one in place of a fix PR.
 - anything this session already ruled out, as a "ruled out" list
-- **the last step, the verification run**, worded so the session cannot miss it:
-
-  > When every PR this session opened has merged, ask ONE AskUserQuestion
-  > with the option label "<verify label>". The user asked for this run by
-  > pasting this prompt; their tap on that label is the go. On the tap, run
-  > `gh workflow run <workflow> --repo <repo> --ref <base branch>`,
-  > post the run link from `gh run list --repo <repo> --workflow <workflow> --limit 1`,
-  > and end the turn. Do not poll it: the runner sends the result, and
-  > `/nightly` reads that run like any other. If they decline, end normally.
 
 Print it and move on. Do not start the work here.
 Proofread it before printing: a slip inside the block cannot be fixed after it.
@@ -319,6 +309,6 @@ Ask ONE `AskUserQuestion`:
 
 - write code, cut a branch, open a worktree or a pull request, or push
 - file an issue for a failing test, a regression, a gap or a notice
-- launch a test run; the verification run belongs to the fix session, on the user's tap
+- launch a test run, or tell the fix session to launch one
 - send mail or post to a board; the runner already sent the report, and step 7's issues are the only thing this skill files
 - point the prompt at a path on this machine; the fix session fetches what it needs, so this session can be archived the moment it is done
