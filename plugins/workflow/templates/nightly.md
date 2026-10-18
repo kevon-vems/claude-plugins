@@ -21,10 +21,12 @@ Read by /nightly. Repo, base branch, branch prefix and merge rules come from `##
 - coverage skip: none
   - What to leave out of "methods no test ran": paths, or kinds such as constructors. One line, comma-separated.
 - test claim: none
-  - How a component names the test that covers it (an attribute, a comment tag). Used in the fix-session prompt for new gaps.
+  - How a component names the test that covers it (an attribute, a comment tag). Used when fixing new gaps.
 - dead code keep file: none
   - The file that lists detector code kept on purpose, each with a reason.
 - dead code proof: none
   - The command that proves a detector delete lost no rows. `<root>` is `git rev-parse --show-toplevel`.
+- build check: none
+  - The command that proves the fixes build before the one commit, e.g. `dotnet build`. Never a full test run. Default: none, so the check is skipped and the report says so.
 - date format: YYYY-MM-DD
   - How dates are written in the report.

@@ -1,27 +1,32 @@
 ---
 name: nightly
-description: The triage desk for the nightly test run's report. Reads the latest run, hands every test failure, new gap and new notice to ONE pasteable fix-session prompt, and asks File / Skip / Already tracked for everything else, filing each yes as a GitHub issue that /gh-go sessions build in parallel. Writes no code and opens no branch. Use when the user types /nightly, asks "what did the nightly find", or wants to act on the morning email.
+description: The triage desk for the nightly test run's report, and the session that fixes it. Reads the latest run, asks File / Skip / Already tracked for everything that is not a failure, gap or notice, then fixes every test failure, new gap and new notice right here with parallel sub-agents, on one branch and one pull request. Use when the user types /nightly, asks "what did the nightly find", or wants to act on the morning email.
 ---
 
-# /nightly - the triage desk for the morning report
+# /nightly - read the morning report, then fix it
 
-Three parts, and this skill is only the middle one:
+Two parts, and this skill is the second:
 
 | Part | Does |
 |---|---|
 | The runner (`<workflow>`) | Runs the tests on `<base branch>`, writes the report, sends it to the team |
-| **`/nightly`** | Sorts the report into two lanes and hands each item to the right place |
-| A pasted fix session, and `/gh-go` sessions | Do the actual work |
+| **`/nightly`** | Sorts the report, asks about the issue-worthy items, then fixes the rest itself |
 
-**`/nightly` changes nothing in the repo.**
+**The order is fixed:**
 
-- No branch, no worktree, no code, no pull request, no test run.
-- Its output is one paste-ready prompt, and the GitHub issues the user said yes to.
+1. Ask every Lane B question and file the yeses (step 6).
+2. Then roll straight into Lane A, the fixes (step 7). No pasted prompt, no second session.
+
+**Lane A runs in parallel.**
+
+- One sub-agent per item, all started in one message.
+- Every fix lands on ONE branch and ONE pull request.
+- No test run beyond the build check in step 7.
 
 **Usage**
 
-    /nightly            # sort, print the fix-session prompt, then ask about the rest
-    /nightly --list     # sort and show both lanes; ask nothing, file nothing
+    /nightly            # sort, ask about Lane B, then fix Lane A
+    /nightly --list     # sort and show both lanes; ask nothing, fix nothing, file nothing
 
 ## 0. Read the settings
 
@@ -42,6 +47,8 @@ A key in both files takes the local value.
 | `<base branch>` | Shared `base branch` | the repo's default branch |
 | `<branch prefix>` | Shared `branch prefix` | `claude/` |
 | `<human merges>` | Shared `human merges` | every path |
+| `<worktree folder>` | Shared `worktree folder` | a sibling folder of the checkout |
+| `<build check>` | `build check` | none: the step is skipped, and the report says so |
 | `<workflow>` | `workflow` | **required** |
 | `<artifact>` | `artifact` | **required** |
 | `<stale hours>` | `stale after` | `30` |
@@ -78,6 +85,7 @@ Download its artifact:
 
 - Take `nightly-result.json`, `nightly-report.md` and `code-coverage.md` from between the `<log markers>` that the step `<log step>` writes.
 - That is enough to sort, never enough to triage: the screenshots and test result files live only in the artifact.
+- Lane A still runs, but a failure the log alone cannot explain is reported as blocked, never guessed at.
 - **No markers on a red run** means it died before the report. The failed step from the run's jobs list is the whole of Lane A.
 - No `<log step>` set: say the artifact could not be read, and stop.
 
@@ -147,7 +155,7 @@ When it is older than the previous run, say so beside `regressed_tests` and `new
 
 ## 4. Sort into two lanes
 
-### Lane A - the fix session. One prompt, no issues.
+### Lane A - fixed here. No issues.
 
 A failing test, a gap and a notice are never GitHub issues.
 The report is the record: tomorrow's run re-surfaces each one until it is gone.
@@ -201,47 +209,10 @@ Check for the merge, from the repo root (`git rev-parse --show-toplevel`):
 - A merge explains it: Lane B, one line naming the PR, no question.
 - No merge: it is a lost test, and goes in Lane A.
 
-## 6. Lane A: print ONE prompt
+## 6. Lane B: ask, then file
 
-When Lane A is empty, say so in one line and skip to step 7.
-
-Otherwise print a single fenced block the user pastes into a fresh session.
-
-- It is self-contained: everything that session needs is inside it.
-- Nothing goes after it that qualifies it. A caveat belongs inside, or nowhere.
-
-The prompt carries:
-
-- the run URL, and the first step: download the artifact into its own scratchpad, never a folder this session made
-
-      gh run download <id> --repo <repo> --name <artifact> \
-        --dir <your scratchpad>/nightly-<id>
-
-  and, for a machine that cannot download, the step 1 fallback:
-  the job log's `<log markers>` sections, which carry no screenshots or test result files
-- the three parts, each under its own heading:
-  - **Failures:** each `blind_suites` line first.
-    Then each item's test name or step and its first error line, under its failure window's `title` with that window's PR numbers.
-  - **Tests to write:** each new gap line.
-    The work is a test that claims the page or action, named by `<test claim>`.
-  - **Notices to review:** each new notice line.
-    The work is a claiming test that reaches it.
-- the method for failures: `/triage` each one.
-  Artifacts before theories, R2 before R1 before R4, the probe only when the artifacts leave it ambiguous.
-- the branches: every fix on a `<branch prefix><slug>` branch off `<base branch>`.
-  One branch at a time, each merged before the next.
-  A change under `<human merges>` is a PR a person merges.
-- the limits: no GitHub issue for a failure, a gap or a notice.
-  No test run.
-- the label rule, when `<caught label>` is set:
-  - When an item's root cause is a real product bug (not the test, the pipeline or the environment), the PR that fixes it gets `<caught label>`.
-  - One label per bug: an issue gets it only when the session files one in place of a fix PR.
-- anything this session already ruled out, as a "ruled out" list
-
-Print it and move on. Do not start the work here.
-Proofread it before printing: a slip inside the block cannot be fixed after it.
-
-## 7. Lane B: ask, then file
+Every question comes before any Lane A work starts.
+When Lane B is empty, say so in one line and go to step 7.
 
 For each item, before asking:
 
@@ -278,6 +249,57 @@ On **File it**:
 
 Read each one back with `gh issue view <n> --repo <repo>` before reporting it filed.
 
+## 7. Lane A: fix it here, in parallel
+
+When Lane A is empty, say so in one line and skip to step 8.
+Otherwise start at once. The user's `/nightly` is the go; do not ask first.
+
+### Set up once
+
+- ONE worktree in `<worktree folder>`, on ONE branch `<branch prefix>nightly-<date>` off `origin/<base branch>`.
+  Every sub-agent works in that worktree. None cuts its own branch.
+- Sub-agents read the artifact folder from step 1. Pass them its full path.
+
+### Round 1: triage, all at once
+
+Start one sub-agent per Lane A item, every one in the SAME message so they run together.
+A group of failures that share a first error line is one item.
+
+Each triage agent:
+
+- runs `/triage <Suite.Test>` against the artifact folder;
+  artifacts before theories, R2 before R1 before R4, the probe only when the artifacts leave it ambiguous;
+- for a gap or a notice, finds the page or action and the test that should claim it, named by `<test claim>`;
+- changes NO file;
+- returns: the root cause, whether it is a real product bug, the fix, and every file the fix touches.
+
+### Round 2: fix, all at once
+
+Sort the triage results by the files they touch.
+
+- Items whose files do not overlap: one fix agent each, every one in the SAME message.
+- Items that share a file: ONE agent takes them in order, so two agents never write the same file.
+
+Each fix agent:
+
+- edits only the files its triage named, inside the shared worktree;
+- never commits, never stages, never pushes;
+- returns the files it changed and one line per item on what it did.
+
+An item a fix agent cannot finish is reported as blocked, with why. It is not filed as an issue.
+
+### Check, then one pull request
+
+1. Read the whole diff yourself. Any change outside the files the triage named is undone.
+2. Run `<build check>`. A red build is fixed before anything is committed.
+3. Stage by name, commit once, push the branch.
+4. Open ONE pull request against `<base branch>`.
+   - The body lists every item, under Failures, Tests to write and Notices to review, with its run URL.
+   - When `<caught label>` is set and any item is a real product bug, the PR gets `--label <caught label>`.
+   - A change under `<human merges>` is a PR a person merges.
+   - Never a closing keyword. Follow every Shared `posting rules` line.
+5. Start the review loop on it (`/pr-review`), as for any PR.
+
 ## 8. Report
 
 Dates in `<date format>`.
@@ -285,7 +307,8 @@ Dates in `<date format>`.
     blind      <line>   (one per blind_suites entry; omitted when none)
     nightly    run <id> <conclusion>, <date>  <url>
     caught     <N> in the last <caught days> days, <M> all time   (omitted when no caught label)
-    lane A     <f> failure(s), <g> test(s) to write, <n> notice(s), prompt printed above  (or: none)
+    lane A     <f> failure(s), <g> test(s) to write, <n> notice(s), PR #<n>  (or: none)
+    blocked    <item>: <why>   (one line each; omitted when none)
     filed      #<n> <title>   (one line each)
     skipped    <n>
     tracked    <n>, each naming its issue
@@ -293,22 +316,23 @@ Dates in `<date format>`.
 
 ## 9. Archive
 
-This session is done once the report is printed: the prompt and the filed issues carry everything forward.
+Only when Lane A was empty: the filed issues carry everything forward.
 Ask ONE `AskUserQuestion`:
 
 | Option | Means |
 |---|---|
-| **Copied it, archive** | Archive this session (`archive_session`, `session_id: "self"`) |
+| **Archive** | Archive this session (`archive_session`, `session_id: "self"`) |
 | **Keep it open** | End the turn; the user has more to ask |
 
-- When Lane A was empty, the first label is **Archive**.
+- When Lane A had work, this session holds the PR: skip this step without comment.
 - No archive tool in this session: skip this step without comment.
 - `--list` skips this step.
 
 ## Never
 
-- write code, cut a branch, open a worktree or a pull request, or push
+- start Lane A before every Lane B question is answered
+- cut more than one branch, or let a sub-agent commit, stage or push
+- let two sub-agents write the same file at once
 - file an issue for a failing test, a regression, a gap or a notice
-- launch a test run, or tell the fix session to launch one
-- send mail or post to a board; the runner already sent the report, and step 7's issues are the only thing this skill files
-- point the prompt at a path on this machine; the fix session fetches what it needs, so this session can be archived the moment it is done
+- launch a test run beyond `<build check>`
+- send mail or post to a board; the runner already sent the report
