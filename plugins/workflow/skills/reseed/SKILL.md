@@ -45,7 +45,7 @@ The examples use the default target names. The `target` settings decide the real
 | `force flag` | `--force` | Flag that forces a cold seed |
 | `describe flag` | `--describe` | Flag that prints what a source seeds without connecting |
 | `local targets file` | none | Gitignored file the destination is resolved from. Copied from the main checkout when missing |
-| `schema build command` | none | Builds the schema package the seed tool deploys. Run from this checkout's root |
+| `schema build command` | none | Builds the schema package the seed tool deploys. Run from this checkout's root, before EVERY seed |
 | `lock exit code` | none | Exit code for "a test run holds the run lock" |
 | `lock override` | none | Env var or file that bypasses the run lock. Named so the skill never touches it |
 | `not local exit code` | none | Exit code for "destination is not a local server" |
@@ -67,7 +67,7 @@ The examples use the default target names. The `target` settings decide the real
 
 ## Run it
 
-From the repo root (`git rev-parse --show-toplevel`):
+From the repo root (`git rev-parse --show-toplevel`), after building the schema package (see "The schema package" below):
 
     <seed command> <destination flag> <D> <source flag> <S>
 
@@ -106,10 +106,18 @@ No exit codes set: report the exit code and the tool's own output, and stop.
 - A fresh worktree does not have one, so the destination cannot resolve.
 - Copy it from the same path under the MAIN checkout.
 
-**The schema package must be built.**
+**The schema package must be built, and current.**
 
-- If the run reports it missing, run `schema build command` from this checkout's root.
-- No `schema build command` set: report the message and stop.
+- A stale package fails the seed after it has already dropped the
+  catalog (the seed code writes columns the old package lacks).
+- The tool cannot tell stale from current, so do not wait for it to
+  report a problem.
+- Before every seed, run `schema build command` from this checkout's
+  root. It is quick and safe to repeat.
+- A seed that fails with "Invalid column name" means the package was
+  stale: build it, then run the seed again.
+- No `schema build command` set: skip the build, and say the package
+  was not checked.
 
 ## Verify, then report
 
