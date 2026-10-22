@@ -45,7 +45,6 @@ Values this skill uses, with their defaults:
 | `qa site` | Shipit | none |
 | `qa seed` | Shipit | none |
 | `qa seed add` | Shipit | none |
-| `qa data check` | Shipit | none |
 | `qa sign-ins` | Shipit | none |
 | `qa password in note` | Shipit | no |
 
