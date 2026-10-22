@@ -205,14 +205,14 @@ Requirements describe data, never a step to click.
 Read what `qa seed` names: the list of data conditions the QA seed creates, and how to print it.
 Match each requirement against that list, judging by meaning, not wording.
 
-Then confirm the match is really in the QA site's data, with `qa data check` (a read-only query tool).
-Unread is not absent: a check that fails or cannot run proves nothing, so grade from the seed alone and say the live check could not run.
+The seed code is the only source.
+Never query the QA site's database to grade a requirement, and never name a record it happens to hold.
+The QA site is often a temporary copy of production, so its data says nothing about what the seed creates.
 
 | Grade | Means |
 |---|---|
-| **Met** | In the seed and in the QA site's data. Note the record that meets it (project, studio, user) |
-| **Seeded, not live** | In the seed, but the QA site's data predates it. The note says the QA site needs a reseed first |
-| **Not met** | Nothing in the seed meets it |
+| **Met** | A record the seed creates meets it. Note that record (project, studio, user) as the seed names it |
+| **Not met** | Nothing the seed creates meets it, whatever the QA site holds today |
 
 **Not met: ask.**
 Ask with **AskUserQuestion**, `--yes` included, quoting each unmet requirement verbatim:
@@ -228,16 +228,14 @@ On **Add it to the seed**:
 4. Stop. The new head has not been reviewed or checked, so this run does not merge it.
    Say so in one line, and hand the PR back to the review loop (`/pr-review`), which runs `/shipit` again once it is clean.
 
-On the next run the requirement grades **Seeded, not live** until the QA site is reseeded.
-
 **Pick the sign-in.**
 From `qa sign-ins`, pick one login per portal the steps use: the role the change needs, on the record that meets the data.
 Never invent a login. None fits: say so, and the steps name the role instead.
 
 Show the drafted QA steps (step 7b's shape) in chat before step 3, and add one line to the confirm block:
 
-    QA steps  1 requirement, met by project Harbor (or: seeded, needs a
-              QA reseed / not met, skipped) - posted to #2475 after the merge
+    QA steps  1 requirement, met by seeded project Harbor (or: not met,
+              skipped) - posted to #2475 after the merge
 
 ## 3. Confirm once
 
@@ -464,7 +462,6 @@ Rules for the body:
 
 - A click list, grouped by portal. No rationale, no tables, no before-and-after.
 - Data and sign-in lines name the real record and login; the click list stays generic ("open the project").
-- **Seeded, not live**: add `The QA site needs a reseed before this data exists.` under the data line.
 - **Not met, skipped**: the data line reads `Not in the QA seed - set it up by hand first.`
 - The password is written only when `qa password in note` is `yes`. Otherwise the line names where it lives, as `qa sign-ins` says.
 - Odd facts a tester would miss (a hidden column, a separate full-screen view) go in the list where they apply.

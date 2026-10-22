@@ -30,8 +30,6 @@ Read by /shipit. Every line is optional. It also reads `## Shared`: `repo`, `bas
   - One line per source for the list of data conditions the QA seed creates: a file, or a command that prints it.
 - qa seed add:
   - One line per place a new condition is added, and the build or check to run after.
-- qa data check:
-  - One line per read-only way to confirm a condition is really in the QA site's data, e.g. a query tool that rolls back.
 - qa sign-ins:
   - Where the seeded logins and their password come from, e.g. a command that prints them.
 - qa password in note: no
