@@ -1,6 +1,6 @@
 ---
 name: shipit
-description: Land the work this session did - record any one-time after-deploy steps in the PR body (when the repo uses that heading), merge its PR after one confirm, remove the local worktree and its branch, delete the remote branch, comment on the linked GitHub issue when it stays open, offer to file one batch issue for any leftover review nits, then ask whether to reassign the issue to its originator (the recommended default), close it, leave it open when it still lists unfinished follow-ups, or hand it to a teammate the settings name. Use when the user says /shipit, "ship it", "land this PR", or the work on an issue is reviewed and done.
+description: Land the work this session did - record any one-time after-deploy steps in the PR body (when the repo uses that heading), check that the QA seed holds the data a tester needs and offer to add it (when the repo turns QA steps on), merge its PR after one confirm, remove the local worktree and its branch, delete the remote branch, comment on the linked GitHub issue when it stays open, offer to file one batch issue for any leftover review nits, then ask whether to reassign the issue to its originator (the recommended default), close it, leave it open when it still lists unfinished follow-ups, or hand it to a teammate the settings name. Use when the user says /shipit, "ship it", "land this PR", or the work on an issue is reviewed and done.
 ---
 
 # /shipit - land the PR this session built, then settle the issue
@@ -41,6 +41,13 @@ Values this skill uses, with their defaults:
 | `handoff comment` | Shipit | `Merged. Back to @{login}.` / `Merged. Over to @{login}.` |
 | `close leaves labels` | Shipit | yes |
 | `docs` | Shipit | none |
+| `qa steps` | Shipit | none: steps 2b and 7b are skipped |
+| `qa site` | Shipit | none |
+| `qa seed` | Shipit | none |
+| `qa seed add` | Shipit | none |
+| `qa data check` | Shipit | none |
+| `qa sign-ins` | Shipit | none |
+| `qa password in note` | Shipit | no |
 
 When the settings name docs (`docs:`), read them before step 1.
 
@@ -52,11 +59,13 @@ Things happen in this order, and the order matters:
 
 1. resolve the PR and check the ground
 2. record the PR's one-time after-deploy steps
+2b. check the QA data this PR needs, and offer to seed it
 3. confirm once
 4. merge
 5. remove the local worktree and its branch
 6. delete the remote branch
 7. comment on the linked issue
+7b. post the QA steps on the linked issue
 8. ask what to do with the issue, then do it
 9. offer one batch issue for any leftover review nits
 10. report
@@ -172,6 +181,63 @@ Reference an issue as `#N` or `Refs #N`.
 Show the drafted section in chat before step 3.
 The **Merge it** click in step 3 is what writes it; nothing is written before that click.
 `--yes` skips step 3, but not this: a **Missing** grade under `--yes` still asks once, with **AskUserQuestion**, before the section is written.
+
+## 2b. The data QA needs
+
+Runs only when `qa steps` is `yes`.
+With anything else, skip this step and step 7b, and say nothing about them.
+
+A tester can only check a change against data that shows it.
+This is the last moment the PR is open, so a missing seed row can still join it.
+
+**Is there anything to test?**
+A PR that changes nothing a tester can click (docs, tests, build or pipeline tooling only) has no QA steps.
+Say `QA steps: none, nothing a tester can click` in the confirm block, skip the rest of this step and step 7b.
+
+**Name the data.**
+From the diff, the PR body and the linked issue, write each data requirement as one plain sentence:
+`A project with an expired subscription.`
+`A vendor with two open bids on one project.`
+When any seeded record works, the requirement is `Any seeded <thing>`.
+Requirements describe data, never a step to click.
+
+**Check the seed.**
+Read what `qa seed` names: the list of data conditions the QA seed creates, and how to print it.
+Match each requirement against that list, judging by meaning, not wording.
+
+Then confirm the match is really in the QA site's data, with `qa data check` (a read-only query tool).
+Unread is not absent: a check that fails or cannot run proves nothing, so grade from the seed alone and say the live check could not run.
+
+| Grade | Means |
+|---|---|
+| **Met** | In the seed and in the QA site's data. Note the record that meets it (project, studio, user) |
+| **Seeded, not live** | In the seed, but the QA site's data predates it. The note says the QA site needs a reseed first |
+| **Not met** | Nothing in the seed meets it |
+
+**Not met: ask.**
+Ask with **AskUserQuestion**, `--yes` included, quoting each unmet requirement verbatim:
+
+- **Add it to the seed (Recommended)** - add the data on this PR's branch; the merge waits
+- **Skip** - merge without it; the QA steps say the tester sets the data up by hand
+
+On **Add it to the seed**:
+
+1. Add the data where `qa seed add` says, in this PR's worktree, matching the code around it.
+2. Run the build or check `qa seed add` names. Red means stop and report; never push a red seed.
+3. Commit with a plain message naming the requirement, and push the branch.
+4. Stop. The new head has not been reviewed or checked, so this run does not merge it.
+   Say so in one line, and hand the PR back to the review loop (`/pr-review`), which runs `/shipit` again once it is clean.
+
+On the next run the requirement grades **Seeded, not live** until the QA site is reseeded.
+
+**Pick the sign-in.**
+From `qa sign-ins`, pick one login per portal the steps use: the role the change needs, on the record that meets the data.
+Never invent a login. None fits: say so, and the steps name the role instead.
+
+Show the drafted QA steps (step 7b's shape) in chat before step 3, and add one line to the confirm block:
+
+    QA steps  1 requirement, met by project Harbor (or: seeded, needs a
+              QA reseed / not met, skipped) - posted to #2475 after the merge
 
 ## 3. Confirm once
 
@@ -370,6 +436,40 @@ Rules for the body:
 
 If the issue is a guess from a bare `#NNNN` rather than a real closing link, say that in the comment: `Linked by mention, not by a closing keyword.`
 
+## 7b. QA steps on the issue
+
+Only when step 2b drafted QA steps and step 1 found an issue.
+Skip it when step 8 ends in **Close it**: a closed issue has no tester.
+Run step 8's question first if that is not yet settled, and post this before step 8 reassigns the issue, so the tester finds it waiting.
+
+A separate comment from step 7's, because a tester reads it as a checklist:
+
+    gh issue comment <issue> --repo <repo> --body-file <scratchpad>/issue-<issue>-qa.md
+
+Shape:
+
+    ### QA steps
+
+    **Data needed**
+    - A project with an expired subscription - met by project Harbor (Studio 2)
+
+    **Log in as** `producer@studio2.example` / `<password>` on <qa site>
+
+    **Producer portal**
+    1. Projects > open the project
+    2. Settings > Subscription
+    3. The Renew button shows; Activate does not
+
+Rules for the body:
+
+- A click list, grouped by portal. No rationale, no tables, no before-and-after.
+- Data and sign-in lines name the real record and login; the click list stays generic ("open the project").
+- **Seeded, not live**: add `The QA site needs a reseed before this data exists.` under the data line.
+- **Not met, skipped**: the data line reads `Not in the QA seed - set it up by hand first.`
+- The password is written only when `qa password in note` is `yes`. Otherwise the line names where it lives, as `qa sign-ins` says.
+- Odd facts a tester would miss (a hidden column, a separate full-screen view) go in the list where they apply.
+- Every step-7 rule: no diff, no closing keyword, every `posting rules` line.
+
 ## 8. Ask what happens to the issue
 
 Re-read state and the body first.
@@ -524,6 +624,8 @@ One block, one line per step, each with its verified result:
 
     after deploy  2 steps written to the PR body under the heading
                   (or: 1 step, already recorded / none found)
+    QA steps    posted to #2475, data met (or: needs a QA reseed /
+                not met, skipped / none, nothing a tester can click)
     merged      #2479 -> main, squash a1b2c3d
     worktree    removed <path> (discarded <generated files>)
     local       branch schema-probe-gate deleted
@@ -535,7 +637,7 @@ One block, one line per step, each with its verified result:
     nits        3 filed as #2531 <url>   (or: 3 skipped, still in their
                 threads / none found)
 
-Drop the after-deploy line when step 2 did not run.
+Drop the after-deploy line when step 2 did not run, and the QA steps line when step 2b did not.
 
 Then, and only then, anything that needs the user, one line each:
 
