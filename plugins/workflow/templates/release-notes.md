@@ -46,6 +46,8 @@ Keys marked `(local)` hold values that must never be published. Put them in `.cl
   - How to find the person running this deploy, e.g. a machine-to-person map. Never the owner of the release log folder.
 - operator profile: none
   - The operator's file holding their product email. `<operator>` stands for the person. Default: ask the operator once.
+- email template: none
+  - The HTML the team email is built on, e.g. a path to the house template. Default: plain, simple HTML. The email is also laid out like the newest `email-release-*.html` in the release log folder.
 - release log folder: none (required)
   - The ONE folder every changelog SQL file lands in. Step 1 reads the newest file's first line from here.
 - release log template: none

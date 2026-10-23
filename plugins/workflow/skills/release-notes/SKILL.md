@@ -1,14 +1,15 @@
 ---
 name: release-notes
-description: Turn a finished production deploy into DRAFT changelog entries. Classifies the merged PRs that actually shipped, asks which belong in the changelog, and emits a SQL script that inserts them into the product's changelog table as drafts, applied only on a click naming the file. Use after a production deploy finishes, when the user types /release-notes or asks for release notes or the changelog for what just shipped.
+description: Turn a finished production deploy into DRAFT changelog entries and a team email draft. Classifies the merged PRs that actually shipped, asks which belong in the changelog, emits a SQL script that inserts them into the product's changelog table as drafts, applied only on a click naming the file, then drafts the internal heads-up email. Use after a production deploy finishes, when the user types /release-notes or asks for release notes or the changelog for what just shipped.
 ---
 
-# /release-notes - from a finished deploy to draft changelog entries
+# /release-notes - from a finished deploy to draft changelog entries and a team email
 
-Two outputs, in this order:
+Three outputs, in this order:
 
 1. A classified list of what shipped that a user can see.
 2. A SQL script inserting those items into the changelog table as **drafts**.
+3. An internal email DRAFT telling the team what shipped and what is waiting for review.
 
 The changelog already exists in the product.
 This skill does not invent one; it feeds the one the product has.
@@ -17,9 +18,11 @@ Where that changelog shows up (admin authoring, an in-app page, a public page, a
 Deploys run from `deploy source`, never from a session.
 This skill runs after one finishes and derives everything itself.
 
-**The team heads-up is not this skill's job.**
-The deploy's own report (`deploy source`) tells the team what went live and lists the one-time steps the shipped PRs left for a human.
-This skill does not repeat either, and sends no email.
+**The team heads-up IS this skill's job (step 5).**
+The deploy's own report (`deploy source`) says what went live and lists the one-time steps the shipped PRs left for a human.
+It is not a release note: it does not describe the features and fixes in a user's words or hand the drafts to the reviewer.
+This skill never skips step 5 because a report exists.
+It drafts the email and never sends it.
 
 ## 0. Read the settings
 
@@ -65,6 +68,7 @@ Values this skill uses. `(local)` keys belong in `skill-settings.local.md`.
 | `changelog reviewer` | Release notes | the operator |
 | `operator` | Release notes | the person `git config user.name` names |
 | `operator profile` | Release notes | none: ask the operator's product email once |
+| `email template` | Release notes | none: plain, simple HTML |
 | `release log folder` | Release notes | **required** |
 | `release log template` | Release notes | none: create an empty folder |
 | `log file` | Release notes | none: step 5 is skipped |
@@ -343,13 +347,42 @@ The argument name is whatever `apply script` documents; `-InputFile` is the defa
 `apply setup` says what a person runs once to provision it.
 Say it once and move on.
 
-## 5. Log it
+## 5. The team email
+
+Internal, to the team. Always drafted, whether or not step 4 wrote any SQL.
+The customer-facing announcement is the changelog itself, so this email is the heads-up, not the announcement.
+
+- Formatted **HTML**, built on `email template` and laid out like the newest `email-release-*.html` in `release log folder`. Read that file first.
+- Saved beside the SQL as `email-release-YYYY-MM-DD.html`, same date as the SQL file.
+- **Signed by the OPERATOR**, exactly as `operator profile` defines it.
+- Follow `product name rule` and American English.
+
+It covers, in this order:
+
+1. **What shipped, as features and fixes.** Sections New, Better, Fixed, each item in the words a user would use, from the same classified list as step 2.
+2. **Admin and internal.** Admin-only work, and work behind a flag that is off in production (named as built but switched off).
+3. **The changelog review.** Name `changelog reviewer`, give the draft count the apply script printed, and ask them to review the drafts in `review tool`, edit anything that does not read right, and publish.
+
+Rules for the email:
+
+- **Admin-only work belongs here**, even though step 2 keeps it out of the changelog.
+- **Never list which applications were deployed.** No service table, no shas.
+- **Never mention how the deploy went** unless the operator asks.
+- **Assume the changelog entries are drafts** and hand them to the reviewer.
+- Never an em-dash or en-dash; use a single hyphen.
+
+**This skill drafts and stops.** Show the path, and ask whether to commit it with the SQL.
+Never send it in the same turn, and never on silence.
+Sending is the operator's word, through whatever send path `operator profile` sets out.
+
+## 6. Log it
 
 Append one line to the `## Log` of `log file`:
 
 - the date
 - what shipped
 - how many draft entries were created
+- that the team email was drafted (and, on a later line, sent)
 
 Applying the SQL gets its own line, naming the count inserted and any slug the script skipped.
 
@@ -363,4 +396,5 @@ No `log file` set: skip this step and say so in one line.
   - a click that names the file before it is applied
 - Never restate a PR body as changelog copy. A PR is written for a reviewer.
 - Follow `product name rule` in every string a reader sees.
-- Never an em-dash or en-dash in the SQL file; use a single hyphen.
+- Never skip the team email because the deploy report exists.
+- Never an em-dash or en-dash in the SQL file or the email; use a single hyphen.
