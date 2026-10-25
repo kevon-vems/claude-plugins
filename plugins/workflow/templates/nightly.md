@@ -20,6 +20,7 @@ Read by /nightly. Repo, base branch, branch prefix and merge rules come from `##
   - Where tests live, for the removed-test history search and the Lane B look. Default: the whole tree.
 - coverage skip: none
   - What to leave out of "methods no test ran": paths, or kinds such as constructors. One line, comma-separated.
+  - Better done in the report itself, so its count holds only work. /nightly makes every listed method a test to write.
 - test claim: none
   - How a component names the test that covers it (an attribute, a comment tag). Used when fixing new gaps.
 - dead code keep file: none

@@ -1,6 +1,6 @@
 ---
 name: nightly
-description: The triage desk for the nightly test run's report, and the session that fixes it. Reads the latest run, asks File / Skip / Already tracked for everything that is not a failure, gap or notice, then fixes every test failure, new gap and new notice right here with parallel sub-agents, on one branch and one pull request. Use when the user types /nightly, asks "what did the nightly find", or wants to act on the morning email.
+description: The triage desk for the nightly test run's report, and the session that fixes it. Reads the latest run, asks File / Skip / Already tracked for the issue-worthy items, then fixes every test failure, open gap, open notice and untested method right here with parallel sub-agents, on one branch and one pull request. Nothing the report counts is left alone. Use when the user types /nightly, asks "what did the nightly find", or wants to act on the morning email.
 ---
 
 # /nightly - read the morning report, then fix it
@@ -11,6 +11,10 @@ Two parts, and this skill is the second:
 |---|---|
 | The runner (`<workflow>`) | Runs the tests on `<base branch>`, writes the report, sends it to the team |
 | **`/nightly`** | Sorts the report, asks about the issue-worthy items, then fixes the rest itself |
+
+**Nothing the report counts is left alone.**
+Every open item behind a number in the report is fixed here (Lane A) or asked about (Lane B).
+New or old makes no difference: a count nobody works is how a report gets ignored.
 
 **The order is fixed:**
 
@@ -115,8 +119,9 @@ Read the JSON for every list. Never count from the markdown or the email.
 
 | File | Holds |
 |---|---|
-| `nightly-result.json` | `counts`, `regressed_tests`, `new_failures`, `tests_added`, `tests_removed`, `failed_tests`, `wave_read`, `gaps_total`, `gaps_new`, `notices_total`, `notices_new`, `blind_suites`, `failure_windows`, `baseline_date` |
+| `nightly-result.json` | `counts`, `regressed_tests`, `new_failures`, `tests_added`, `tests_removed`, `failed_tests`, `wave_read`, `gaps_total`, `gaps_open`, `gaps_new`, `notices_total`, `notices_open`, `notices_new`, `blind_suites`, `failure_windows`, `baseline_date` |
 | `coverage-summary.json` | every uncovered method, with its file and last-commit time |
+| `service-coverage.json` | `browser_only` and `writes_without_fast`: methods a browser test reaches, or that write to the database, that no unit-level test touches |
 | `doc-changes.json` | `undocumented`: doc surfaces whose code moved since the last run; `triggers`: for each of them, the code files that moved |
 | `merged-prs.json` | every PR merged since the last run |
 | `catalog-build-notes.txt` | catalog build (analyze) failures and warnings, one per line |
@@ -127,6 +132,9 @@ Read the JSON for every list. Never count from the markdown or the email.
 - A file that is missing was not produced tonight. Say "not checked", never "none".
 - `new_failures`, `tests_added`, `tests_removed`, `gaps_new` and `notices_new` are `null` on a first night.
 - `gaps_total` and `notices_total` are `null` when the catalog build failed: say "not read".
+- `gaps_open` and `notices_open` list every open line, new and old.
+  A runner too old to write them: read every line under the report's gap and notice headings instead.
+  A total above 0 with no lines read is "not read", never "none".
 - `wave_read` is whether tonight's test results were read at all.
 
 **Suites that did not run.**
@@ -157,7 +165,7 @@ When it is older than the previous run, say so beside `regressed_tests` and `new
 
 ### Lane A - fixed here. No issues.
 
-A failing test, a gap and a notice are never GitHub issues.
+A failing test, a gap, a notice and an untested method are never GitHub issues.
 The report is the record: tomorrow's run re-surfaces each one until it is gone.
 
 Lane A has three parts, in this order:
@@ -167,13 +175,18 @@ Lane A has three parts, in this order:
    - The run is red for a pipeline reason: a failed step, a test run that did not complete, `wave_read: false`, or a line in `catalog-build-notes.txt`
    - `regressed_tests`, then `new_failures`
    - A `tests_removed` test that no merged PR explains (step 5)
-2. **Tests to write:** every `gaps_new` line.
-   Each is a page or action that no test named by `<test claim>` covers.
-3. **Notices to review:** every `notices_new` line.
+2. **Tests to write**
+   - Every `gaps_open` line: a page or action that no test named by `<test claim>` covers.
+   - Every method in `coverage-summary.json`'s `uncovered`, minus what `<coverage skip>` names.
+     One item per file.
+   - Every `browser_only` and `writes_without_fast` row in `service-coverage.json`.
+     One item per class.
+3. **Notices to review:** every `notices_open` line.
    Each is a message, page part or portal that no claiming test reaches.
 
-- Only the new ones go in.
-- The open ones are counted (`gaps_total`, `notices_total`) and stay in the report.
+- Every open item goes in, new or old. Mark the new ones new; skip none of the old ones.
+- An untested method that nothing reaches is fixed by deleting it, not by testing it.
+  The triage says which.
 - Group failures that share a first error line from the `.trx`.
   Hundreds of tests on one certificate error are one item.
 
@@ -181,8 +194,6 @@ Lane A has three parts, in this order:
 
 - A `tests_removed` test that a merge explains (step 5): **no question**, one line in the report naming the PR.
 - **Doc pages whose code moved**: ONE item for the whole list.
-- **Methods changed since the last run that no test ran**: one item per file.
-  Skip everything `<coverage skip>` names.
 - **Detector code that ran on nothing** (`report-dead-detector-code.txt`): one item per detector module.
   - NOT MEASURED is not "none": say so and ask nothing.
   - The issue names each function and its lines, and the approach:
@@ -191,6 +202,16 @@ Lane A has three parts, in this order:
     - otherwise: add it to `<dead code keep>` with a reason.
   - Prove each delete with `<dead code proof>`: it must show that no detector lost rows.
   - No `<dead code keep>` or `<dead code proof>` set: the issue says so, and leaves the approach to the reader.
+
+### Check the sort against the report
+
+Every row in the report's numbers table that counts open work must match the items behind it in a lane.
+
+- A row above 0 with no lane item, or a count that does not match its items, is a hole in this sort.
+- Print it in one line at the top of the output, above the lanes, naming the row.
+  Never pass over it.
+- A count that holds things nobody should work on is a bug in the counter.
+  Fixing the counter is a Lane A item.
 
 `--list` shows the count line and both lanes as tables here and stops.
 
@@ -270,6 +291,7 @@ Each triage agent:
 - runs `/triage <Suite.Test>` against the artifact folder;
   artifacts before theories, R2 before R1 before R4, the probe only when the artifacts leave it ambiguous;
 - for a gap or a notice, finds the page or action and the test that should claim it, named by `<test claim>`;
+- for an untested method, finds what calls it: nothing means delete it; otherwise names the test tier that should cover it, and the test;
 - changes NO file;
 - returns: the root cause, whether it is a real product bug, the fix, and every file the fix touches.
 
