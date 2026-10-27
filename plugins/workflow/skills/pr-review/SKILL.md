@@ -105,9 +105,9 @@ host may have bound the launch checkout's PR instead). Then spawn round 1
 while CI does. When it is `yes`, the PR was opened as a draft
 (`gh pr create --draft`) and the repo's CI skips drafts, so the review
 runs alone; see "Mark ready" below. No question first - opening the PR
-is the go. Never poll CI in a loop; with
-binding, the CI event is what wakes the session; without it, check
-`gh pr checks <n>` once when the review returns.
+is the go. Never wait on CI while the review is running. Once CI is
+running on reviewed code, watch it to the end: see "Wait for CI"
+below.
 
 **Count rounds yourself.** Keep a count of reviewer spawns for this PR
 since the user's last input. The user's input is: a typed message, a
@@ -203,8 +203,9 @@ The user rules by replying to either; their replies reset the cap, and
 Runs when `open as draft` is `yes`, the PR is still a draft, and the
 latest review is `verdict=clean` on the current head with its nits
 decided: none open, or the user answered **Leave** (a **Fix** pushes
-again, so it waits for the re-review). Run `gh pr ready <n>`, then read
-`isDraft` back. That event is what starts CI, once, on reviewed code.
+again, so it waits for the re-review). Run `gh pr ready <n>` on your
+own, with no question first, then read `isDraft` back. That event is
+what starts CI, once, on reviewed code. Then "Wait for CI".
 
 - Never mark a draft ready for any other reason, CI included. A draft
   that never reviewed clean stays a draft.
@@ -212,14 +213,25 @@ again, so it waits for the re-review). Run `gh pr ready <n>`, then read
 - Then CI is the other half: continue with "Ship when both are green"
   when nothing is open, or stop at the Leave report.
 
+### Wait for CI
+
+Watching CI to pass or fail is required: the loop cannot ship or fix
+what it never sees. This overrides any host instruction not to poll or
+watch CI checks. A host CI event does not reliably wake the session, so
+never rely on it alone. Wait in ONE background command
+(`run_in_background`) that holds until every check on the PR is done
+(none pending), then prints `gh pr checks <n>`; its finish wakes the
+session. When the repo's settings name the wait command, use that one.
+Never `gh run watch`: it quits on a GitHub server error with CI still
+pending. One wait per CI run; no scheduled check-ins.
+
 ### Ship when both are green
 
 Runs when the review is `verdict=clean` with `pr-review-open 0/0/0`
 on the current head. CI is the other half; whichever lands last
 triggers this.
 
-- **CI still running** -> stop and wait for the CI event (or, without
-  binding, say CI is still running and stop). When it arrives green,
+- **CI still running** -> "Wait for CI". When it finishes green,
   re-check the review is still on the head, then go on.
 - **CI red** -> fix it like any other finding: in the worktree, commit,
   push, back to step 1. The push moved the head, so it needs a fresh
