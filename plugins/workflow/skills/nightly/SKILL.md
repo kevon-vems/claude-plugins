@@ -199,6 +199,7 @@ Lane A has three parts, in this order:
 - **Training videos** (`video-changes.json`): ONE item for every `rebuild`, `broken` and `unresolved` entry together.
   - Ask even when only `broken` or only `unresolved` has entries.
   - The look reads each `broken` script and confirms its test IDs are gone from the tree.
+  - The look grades each video (below). Only a **Redo** or a broken script makes File it the recommendation.
 - **Detector code that ran on nothing** (`report-dead-detector-code.txt`): one item per detector module.
   - NOT MEASURED is not "none": say so and ask nothing.
   - The issue names each function and its lines, and the approach:
@@ -207,6 +208,26 @@ Lane A has three parts, in this order:
     - otherwise: add it to `<dead code keep>` with a reason.
   - Prove each delete with `<dead code proof>`: it must show that no detector lost rows.
   - No `<dead code keep>` or `<dead code proof>` set: the issue says so, and leaves the approach to the reader.
+
+### Grade every video before asking
+
+A video costs far more to rebuild than a doc page costs to fix.
+Code that moved is not, by itself, a reason to rebuild.
+
+For each video, read its script: what each step shows, and what the narration says.
+Then read what changed in each of its `changed` files, from the previous run's start (step 5) to tonight's run.
+
+| Grade | When | Examples |
+|---|---|---|
+| **Redo** | A viewer following the video now gets stuck or misled | a button, menu or step it uses is gone, renamed or moved; the flow has a new required step; the narration now says something false; a screen it shows looks clearly different |
+| **Not yet** | It still works, but looks a little dated | a small layout shift, a new optional field, a changed icon or color |
+| **No** | Nothing the video shows or says changed | a refactor, a test ID, styling or text on a part of the page the video never shows or reads |
+
+- A **broken** script is fixed either way, and that costs no build. The video itself gets its own grade.
+- An **unresolved** video is graded from its script and the product code. Unsure is **Not yet**, and says so.
+- Grade by what the video shows, never by the size of the diff.
+- The question names each video with its grade and a one-line reason.
+- No Redo and no broken script: recommend **Skip**. The issue is filed only on a person's click.
 
 ### Check the sort against the report
 
@@ -269,9 +290,10 @@ On **File it**:
   They list every page with its `triggers` beneath it, so the issue shows which code moved.
   The reader never mistakes the list for doc edits.
 - **Video items** have three lists, each video by its title and script path:
-  - **Rebuild**: each video with its `changed` files beneath it.
-  - **Fix the script first**: each `broken` video with the test IDs that are gone. It cannot record until then.
+  - **Rebuild**: each **Redo** video, with its reason and its `changed` files beneath it.
+  - **Fix the script first**: each `broken` video with the test IDs that are gone. It cannot record until then. A broken video not graded Redo gets its script fixed and rehearsed, with no build.
   - **Check by hand**: each `unresolved` video with its test IDs. The check could not see what they point at.
+  - **Not rebuilding**: each **Not yet** and **No** video, with its grade and reason, so the reader sees each one was weighed.
   - The work follows `<video process>`. With none set, the issue says so.
 - **Unassigned.** The user orders the queue; `/gh-go` picks it up.
 - **Unlabeled, with one exception:** an item that is a real product bug gets `--label <caught label>`, when one is set.
@@ -345,7 +367,7 @@ Dates in `<date format>`.
     skipped    <n>
     tracked    <n>, each naming its issue
     explained  <n> removed test(s), each naming its PR
-    videos     <r> to rebuild, <b> broken, <u> unresolved   (or: not checked)
+    videos     <r> redo, <y> not yet, <n> no change seen, <b> broken, <u> unresolved   (or: not checked)
 
 ## 9. Archive
 
