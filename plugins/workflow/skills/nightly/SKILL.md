@@ -65,6 +65,7 @@ A key in both files takes the local value.
 | `<test claim>` | `test claim` | the repo's way of naming the test that covers a page or action |
 | `<dead code keep>` | `dead code keep file` | none |
 | `<dead code proof>` | `dead code proof` | none |
+| `<video process>` | `video process` | none: the video issue names no process |
 | `<date format>` | `date format` | `YYYY-MM-DD` |
 
 ## 1. Find the run
@@ -123,6 +124,7 @@ Read the JSON for every list. Never count from the markdown or the email.
 | `coverage-summary.json` | every uncovered method, with its file and last-commit time |
 | `service-coverage.json` | `browser_only` and `writes_without_fast`: methods a browser test reaches, or that write to the database, that no unit-level test touches |
 | `doc-changes.json` | `undocumented`: doc surfaces whose code moved since the last run; `triggers`: for each of them, the code files that moved |
+| `video-changes.json` | `rebuild`: training videos whose screens' code moved, each with the files in `changed`; `broken`: videos whose script names a test ID that is gone, so they cannot record until fixed; `unresolved`: test IDs the check could not tie to product code |
 | `merged-prs.json` | every PR merged since the last run |
 | `catalog-build-notes.txt` | catalog build (analyze) failures and warnings, one per line |
 | `report-dead-detector-code.txt` | detector functions that never ran tonight, or NOT MEASURED |
@@ -194,6 +196,9 @@ Lane A has three parts, in this order:
 
 - A `tests_removed` test that a merge explains (step 5): **no question**, one line in the report naming the PR.
 - **Doc pages whose code moved**: ONE item for the whole list.
+- **Training videos** (`video-changes.json`): ONE item for every `rebuild`, `broken` and `unresolved` entry together.
+  - Ask even when only `broken` or only `unresolved` has entries.
+  - The look reads each `broken` script and confirms its test IDs are gone from the tree.
 - **Detector code that ran on nothing** (`report-dead-detector-code.txt`): one item per detector module.
   - NOT MEASURED is not "none": say so and ask nothing.
   - The issue names each function and its lines, and the approach:
@@ -263,6 +268,11 @@ On **File it**:
 - **Doc items** say the work is a `/fix-docs` pass.
   They list every page with its `triggers` beneath it, so the issue shows which code moved.
   The reader never mistakes the list for doc edits.
+- **Video items** have three lists, each video by its title and script path:
+  - **Rebuild**: each video with its `changed` files beneath it.
+  - **Fix the script first**: each `broken` video with the test IDs that are gone. It cannot record until then.
+  - **Check by hand**: each `unresolved` video with its test IDs. The check could not see what they point at.
+  - The work follows `<video process>`. With none set, the issue says so.
 - **Unassigned.** The user orders the queue; `/gh-go` picks it up.
 - **Unlabeled, with one exception:** an item that is a real product bug gets `--label <caught label>`, when one is set.
   A coverage gap, a doc page or dead detector code is not one.
@@ -335,6 +345,7 @@ Dates in `<date format>`.
     skipped    <n>
     tracked    <n>, each naming its issue
     explained  <n> removed test(s), each naming its PR
+    videos     <r> to rebuild, <b> broken, <u> unresolved   (or: not checked)
 
 ## 9. Archive
 

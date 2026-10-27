@@ -29,5 +29,7 @@ Read by /nightly. Repo, base branch, branch prefix and merge rules come from `##
   - The command that proves a detector delete lost no rows. `<root>` is `git rev-parse --show-toplevel`.
 - build check: none
   - The command that proves the fixes build before the one commit, e.g. `dotnet build`. Never a full test run. Default: none, so the check is skipped and the report says so.
+- video process: none
+  - How a training video is rebuilt, named in the video issue (a doc path or a skill). Default: none, so the issue says no process is set.
 - date format: YYYY-MM-DD
   - How dates are written in the report.
