@@ -1,6 +1,6 @@
 ---
 name: release-notes
-description: Turn a finished production deploy into DRAFT changelog entries and a team email draft. Classifies the merged PRs that actually shipped, asks which belong in the changelog, emits a SQL script that inserts them into the product's changelog table as drafts, applied only on a click naming the file, then drafts the internal heads-up email. Use after a production deploy finishes, when the user types /release-notes or asks for release notes or the changelog for what just shipped.
+description: Turn a finished production deploy into DRAFT changelog entries, DRAFT help page text and a team email draft. Classifies the merged PRs that actually shipped, asks which belong in the changelog, emits a SQL script that inserts them into the product's changelog table as drafts and adds a help page draft for each changed screen, applied only on a click naming the file, then drafts the internal heads-up email. Use after a production deploy finishes, when the user types /release-notes or asks for release notes or the changelog for what just shipped.
 ---
 
 # /release-notes - from a finished deploy to draft changelog entries and a team email
@@ -8,7 +8,7 @@ description: Turn a finished production deploy into DRAFT changelog entries and 
 Three outputs, in this order:
 
 1. A classified list of what shipped that a user can see.
-2. A SQL script inserting those items into the changelog table as **drafts**.
+2. A SQL script inserting those items into the changelog table as **drafts**, and, when `help page procedure` is set, a help page draft for each screen that changed (step 4a).
 3. An internal email DRAFT telling the team what shipped and what is waiting for review.
 
 The changelog already exists in the product.
@@ -73,6 +73,13 @@ Values this skill uses. `(local)` keys belong in `skill-settings.local.md`.
 | `release log template` | Release notes | none: create an empty folder |
 | `log file` | Release notes | none: step 5 is skipped |
 | `apply script` | Release notes | none: step 4b hands over the path and stops |
+| `help page procedure` | Release notes | none: step 4a is skipped |
+| `help page keys` | Release notes | required when `help page procedure` is set |
+| `help page code` | Release notes | the screen's own files |
+| `help page current text` | Release notes | required when `help page procedure` is set |
+| `help page declined` | Release notes | none |
+| `help page format` | Release notes | Markdown |
+| `help page reader` | Release notes | the `changelog reviewer` |
 | `apply login` (local) | Release notes | none |
 | `apply setup` (local) | Release notes | none |
 | `product name rule` | Release notes | none |
@@ -315,6 +322,33 @@ Drop the `<audience>` line when `audience values` is not set.
 
 Tell the operator the path, and that nothing has been applied yet.
 
+## 4a. Help page drafts
+
+Skipped when `help page procedure` is not set.
+Per-screen help is text a person reads beside the screen, kept in the database, and reviewed before customers see it.
+The deploy changed the product, so the help may now be wrong.
+The drafts go in the SAME file as the changelog rows, and the same click in step 4b applies both.
+
+1. **Find the screens.** `git diff --name-only <range>` over `help page code`. Read each changed file's lines: comments, usings, test ids and class or style edits are not a change a reader could see. Map each screen to its key through `help page keys`.
+2. **Apply the flag rule from step 2.** A screen whose change sits behind a flag that is OFF in production gets no draft.
+3. **Honor `help page declined`.** A key whose newest version is Declined, and whose code did not change again in this range, gets no draft.
+4. **Read the current text** from `help page current text`. A new key with no page has none: write it from the screen.
+5. **Write the draft as an edit of the current text.** Change only what the deploy made untrue or missing. Keep the rest word for word, so the reviewer's compare view shows exactly the change. Follow `help page format` and `product name rule`.
+6. **One call per key**, through `help page procedure`, after the changelog inserts and inside the same transaction:
+
+```sql
+EXEC dbo.HelpPage_AddDraft
+    @HelpPageKey = N'<key>',
+    @BodyMarkdown = N'<the whole page, apostrophes doubled>',
+    @PullRequests = N'#412, #418',
+    @CreatedByUserId = @Author;
+```
+
+The procedure creates the page for a new key, leaves a page that already has an open draft alone (the reviewer may have edited it), and skips a draft identical to the published text, printing `drafted`, `kept` or `skipped`.
+Name every `kept` screen so the reviewer can publish or decline its open draft first.
+Tell the operator how many screens got a draft and which were skipped, with the count of each.
+Nothing else writes help pages: never a direct insert or update.
+
 ## 4b. Apply it, on a click
 
 `apply script` is the ONE way this file reaches production.
@@ -328,7 +362,7 @@ Tell the operator the path, and that nothing has been applied yet.
 Ask, with `AskUserQuestion`, and **name the file in the label**. A generic "Apply" authorizes nothing:
 
 > **Apply `changelog-2026-08-30.sql` to production?**
-> - `Apply changelog-2026-08-30.sql` - inserts N drafts
+> - `Apply changelog-2026-08-30.sql` - inserts N changelog drafts and M help page drafts
 > - `Leave it for me to run`
 
 Then call the script from the main checkout, in forward-slash form (see "The main checkout"):
@@ -341,6 +375,7 @@ The argument name is whatever `apply script` documents; `-InputFile` is the defa
 
 - **Report what the script printed, including every `PRINT` line.** A skipped slug is the one outcome that changes what the reviewer will find.
 - Then name `changelog reviewer` and `review tool` in one line: the drafts are waiting there to be reviewed, edited and published.
+- When help page drafts went in, name `help page reader` and where they review them in the same line.
 - If the operator declines, hand over the path and stop. Do not re-ask.
 
 **A missing credential on a first run is setup, not a failure.**
@@ -362,6 +397,7 @@ It covers, in this order:
 1. **What shipped, as features and fixes.** Sections New, Better, Fixed, each item in the words a user would use, from the same classified list as step 2.
 2. **Admin and internal.** Admin-only work, and work behind a flag that is off in production (named as built but switched off).
 3. **The changelog review.** Name `changelog reviewer`, give the draft count the apply script printed, and ask them to review the drafts in `review tool`, edit anything that does not read right, and publish.
+4. **The help page review.** When help page drafts went in, name `help page reader`, give the count of screens drafted, and ask them to review the changes there and publish, edit or decline.
 
 Rules for the email:
 
@@ -382,9 +418,10 @@ Append one line to the `## Log` of `log file`:
 - the date
 - what shipped
 - how many draft entries were created
+- how many help page drafts were created
 - that the team email was drafted (and, on a later line, sent)
 
-Applying the SQL gets its own line, naming the count inserted and any slug the script skipped.
+Applying the SQL gets its own line, naming the count inserted and any slug or help page key the script skipped.
 
 No `log file` set: skip this step and say so in one line.
 
@@ -398,3 +435,4 @@ No `log file` set: skip this step and say so in one line.
 - Follow `product name rule` in every string a reader sees.
 - Never skip the team email because the deploy report exists.
 - Never an em-dash or en-dash in the SQL file or the email; use a single hyphen.
+- Help page text is only ever written through `help page procedure`, and only as a draft.
