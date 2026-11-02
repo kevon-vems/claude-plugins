@@ -308,13 +308,14 @@ round 4 from being a wall of duplicates.
 
 Four outcomes:
 
-- **Marker matches the CURRENT head SHA, and no reply signed
-  `<!-- pr-review-agent -->` was posted after that review** -> **skip this
+- **Marker matches the CURRENT head SHA, and no reply from a person or the
+  dev session (signed `<!-- pr-review-agent -->` or not; bots do not count)
+  was posted after that review** -> **skip this
   PR.** Nothing has changed since it was reviewed. In a sweep, note it and
   move on. Read replies from review threads AND PR comments (on a body-only
   PR the reply is a PR comment) before deciding to skip.
 - **Marker matches the CURRENT head SHA, the review left findings open, and
-  a signed reply was posted after it** -> **rule on the pushback.** Read the
+  such a reply was posted after it** -> **rule on the pushback.** Read the
   reply, then post a short new review on the SAME head: each finding the
   reply covers is resolved or still open (the pushback rules are in the
   reviewer agent), with a new marker carrying the same `sha` and the next
