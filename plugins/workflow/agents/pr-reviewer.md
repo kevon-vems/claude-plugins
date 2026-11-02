@@ -106,8 +106,8 @@ the finding stands as-is, rule on it this round. Accept it (reply once
 agreeing, **resolve the thread** per the skill's GraphQL mechanics,
 count the finding closed) or reject it (reply once saying why not, the
 finding stays open and its thread stays unresolved, keeping the verdict
-blocked). This holds when the head has not moved: a signed reply posted
-after the latest review on the same head is a reason to run, not to skip
+blocked). This holds when the head has not moved: a reply (signed or an
+unsigned human ruling) posted after the latest review on the same head is a reason to run, not to skip
 (the skill's step 3). Post a short review on that head with a new marker,
 the same `sha`, and the next `round`; read replies from both review
 threads and PR comments, since a body-only PR has only the latter.
