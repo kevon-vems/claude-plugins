@@ -304,10 +304,22 @@ round 4 from being a wall of duplicates.
     gh api repos/{owner}/{repo}/pulls/{n}/reviews  --jq '.[] | select(.body | test("pr-review sha=")) | {id, body, submitted_at}'
     gh api repos/{owner}/{repo}/pulls/{n}/comments --jq '.[] | {id, path, line, body, position}'
 
-Three outcomes:
+    gh api repos/{owner}/{repo}/issues/{n}/comments --jq '.[] | {id, body, created_at}'
 
-- **Marker matches the CURRENT head SHA** -> **skip this PR.** Nothing has
-  changed since it was reviewed. In a sweep, note it and move on.
+Four outcomes:
+
+- **Marker matches the CURRENT head SHA, and no reply signed
+  `<!-- pr-review-agent -->` was posted after that review** -> **skip this
+  PR.** Nothing has changed since it was reviewed. In a sweep, note it and
+  move on. Read replies from review threads AND PR comments (on a body-only
+  PR the reply is a PR comment) before deciding to skip.
+- **Marker matches the CURRENT head SHA, the review left findings open, and
+  a signed reply was posted after it** -> **rule on the pushback.** Read the
+  reply, then post a short new review on the SAME head: each finding the
+  reply covers is resolved or still open (the pushback rules are in the
+  reviewer agent), with a new marker carrying the same `sha` and the next
+  `round`. No full re-read of the diff. It counts as a round: it is a real
+  review, and without the count, pushback, reject, pushback has no limit.
 - **No marker at all** -> first review. Skip to step 4.
 - **Marker on an OLDER SHA only** -> **re-review.** Continue below.
 
