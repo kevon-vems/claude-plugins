@@ -23,7 +23,7 @@ Read by /shipit. Every line is optional. It also reads `## Shared`: `repo`, `bas
 - docs:
   - One line per doc in this repo that /shipit reads before it starts, e.g. a commit policy. Default: none.
 - qa steps: none
-  - `yes` makes /shipit check the data a tester needs before the merge, offer to add it to the QA seed, and post click-list QA steps with a sign-in on the issue after. Default: none, both steps are skipped.
+  - `yes` makes /shipit check the data a tester needs before the merge (traced in the seed code), add whatever is missing to the QA seed, and post click-list QA steps with a sign-in on the issue after. Default: none, both steps are skipped.
 - qa site: none
   - The name or URL of the environment testers use, e.g. `qa.example.com`.
 - qa seed:
