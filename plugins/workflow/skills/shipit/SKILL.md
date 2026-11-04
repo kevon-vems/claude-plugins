@@ -1,6 +1,6 @@
 ---
 name: shipit
-description: Land the work this session did - record any one-time after-deploy steps in the PR body (when the repo uses that heading), check that the QA seed holds the data a tester needs and offer to add it (when the repo turns QA steps on), merge its PR after one confirm, remove the local worktree and its branch, delete the remote branch, comment on the linked GitHub issue when it stays open, offer to file one batch issue for any leftover review nits, then ask whether to reassign the issue to its originator (the recommended default), close it, leave it open when it still lists unfinished follow-ups, or hand it to a teammate the settings name. Use when the user says /shipit, "ship it", "land this PR", or the work on an issue is reviewed and done.
+description: Land the work this session did - record any one-time after-deploy steps in the PR body (when the repo uses that heading), check that the QA seed holds the data a tester needs and add whatever is missing (when the repo turns QA steps on), merge its PR after one confirm, remove the local worktree and its branch, delete the remote branch, comment on the linked GitHub issue when it stays open, offer to file one batch issue for any leftover review nits, then ask whether to reassign the issue to its originator (the recommended default), close it, leave it open when it still lists unfinished follow-ups, or hand it to a teammate the settings name. Use when the user says /shipit, "ship it", "land this PR", or the work on an issue is reviewed and done.
 ---
 
 # /shipit - land the PR this session built, then settle the issue
@@ -58,7 +58,7 @@ Things happen in this order, and the order matters:
 
 1. resolve the PR and check the ground
 2. record the PR's one-time after-deploy steps
-2b. check the QA data this PR needs, and offer to seed it
+2b. check the QA data this PR needs, and seed what is missing
 3. confirm once
 4. merge
 5. remove the local worktree and its branch
@@ -194,15 +194,25 @@ A PR that changes nothing a tester can click (docs, tests, build or pipeline too
 Say `QA steps: none, nothing a tester can click` in the confirm block, skip the rest of this step and step 7b.
 
 **Name the data.**
-From the diff, the PR body and the linked issue, write each data requirement as one plain sentence:
+From the diff, the PR body and the linked issue, write one requirement per data shape any step of the click list needs, not only the headline one.
+Each is one plain sentence naming the exact kind of record and its state:
 `A project with an expired subscription.`
 `A vendor with two open bids on one project.`
+`An asset (not a shot) whose first award was superseded by an awarded rebid.`
+When the change works the same on two kinds of record (shots and assets), and the change touched only one, the requirement names that one.
 When any seeded record works, the requirement is `Any seeded <thing>`.
 Requirements describe data, never a step to click.
 
 **Check the seed.**
-Read what `qa seed` names: the list of data conditions the QA seed creates, and how to print it.
-Match each requirement against that list, judging by meaning, not wording.
+Run or read what `qa seed` names: the list of data conditions the QA seed creates, its sign-ins, and how to print it.
+That list is where to look, not proof. A line like `Rebid history` does not say whether the rebid is on shots or assets, and a category like `the volume projects` names no record.
+For each requirement:
+
+1. Find the candidate record in the list.
+2. Open the seed code that builds it and trace it to the exact shape: the kind of record, its state, and every field the change reads.
+3. Grade it **Met** only when the trace lands on one named record. Note that record (project, studio, user, record code) and the file and method that create it.
+
+Anything short of that trace is **Not met**: a category, an `e.g.` pick, a list line read for its meaning, or a record whose code you did not open.
 
 The seed code is the only source.
 Never query the QA site's database to grade a requirement, and never name a record it happens to hold.
@@ -210,31 +220,42 @@ The QA site is often a temporary copy of production, so its data says nothing ab
 
 | Grade | Means |
 |---|---|
-| **Met** | A record the seed creates meets it. Note that record (project, studio, user) as the seed names it |
-| **Not met** | Nothing the seed creates meets it, whatever the QA site holds today |
+| **Met** | One record the seed creates was traced in the seed code to the exact shape. Note it as above |
+| **Not met** | No traced record meets it, whatever the QA site holds today |
 
-**Not met: ask.**
-Ask with **AskUserQuestion**, `--yes` included, quoting each unmet requirement verbatim:
-
-- **Add it to the seed (Recommended)** - add the data on this PR's branch; the merge waits
-- **Skip** - merge without it; the QA steps say the tester sets the data up by hand
-
-On **Add it to the seed**:
+**Not met: add it to the seed.**
+QA steps never point at data the seed does not create, so an unmet requirement is not a question; it is work on this PR. Say in one line which requirement is unmet and that the merge waits for it, then:
 
 1. Add the data where `qa seed add` says, in this PR's worktree, matching the code around it.
-2. Run the build or check `qa seed add` names. Red means stop and report; never push a red seed.
+2. Run the build or check `qa seed add` names, and print the seed list again to see the new record. Red means stop and report; never push a red seed.
 3. Commit with a plain message naming the requirement, and push the branch.
 4. Stop. The new head has not been reviewed or checked, so this run does not merge it.
    Say so in one line, and hand the PR back to the review loop (`/pr-review`), which runs `/shipit` again once it is clean.
 
+Only when the seed cannot express the data at all (it needs a capability the seed program lacks and adding it is a project of its own) ask with **AskUserQuestion**, `--yes` included, quoting the requirement verbatim:
+
+- **Add it to the seed (Recommended)** - build what the seed needs on this PR's branch; the merge waits
+- **Merge without QA steps** - step 7b posts no click list, only `No QA steps: the QA seed has no <requirement>.`
+
 **Pick the sign-in.**
-From `qa sign-ins`, pick one login per portal the steps use: the role the change needs, on the record that meets the data.
-Never invent a login. None fits: say so, and the steps name the role instead.
+From `qa sign-ins`, pick one login per portal the steps use: the role the change needs, on the record graded **Met**. The sign-in list's own note for that login names that record's project or studio; a login listed only for another project does not fit.
+Never invent a login. None fits: that is a Not met requirement too (`A <role> sign-in on <project>`), and it is added the same way.
 
-Show the drafted QA steps (step 7b's shape) in chat before step 3, and add one line to the confirm block:
+**Check the draft.**
+Draft the QA steps in step 7b's shape, with every repo settings line about QA steps applied; where one differs from 7b's default shape, the settings line wins.
+Then, before showing it, re-read it against the seed:
 
-    QA steps  1 requirement, met by seeded project Harbor (or: not met,
-              skipped) - posted to #2475 after the merge
+- every project, studio, login and record code it names appears in the seed list or the traced seed code, spelled the same
+- each login's sign-in note names the project the steps open
+- every number, status or label it tells the tester to expect was traced to the seed code or the product source
+
+A line that fails this is fixed or cut, never shown.
+
+Show the drafted QA steps in chat before step 3, and add one line to the confirm block:
+
+    QA steps  1 requirement, met by seeded project Harbor
+              (SubscriptionSeeder.SeedExpiredAsync) - posted to #2475
+              after the merge
 
 ## 3. Confirm once
 
@@ -443,7 +464,8 @@ A separate comment from step 7's, because a tester reads it as a checklist:
 
     gh issue comment <issue> --repo <repo> --body-file <scratchpad>/issue-<issue>-qa.md
 
-Shape:
+Post the draft step 2b checked, unchanged.
+Default shape, used only where the repo's settings give no QA steps layout of their own; a settings line about QA steps replaces the matching part of it:
 
     ### QA steps
 
@@ -461,7 +483,8 @@ Rules for the body:
 
 - A click list, grouped by portal. No rationale, no tables, no before-and-after.
 - Data and sign-in lines name the real record and login; the click list stays generic ("open the project").
-- **Not met, skipped**: the data line reads `Not in the QA seed - set it up by hand first.`
+- The data line names only the one record step 2b graded **Met**, never a category or an `e.g.` pick.
+- No line tells the tester to set data up by hand. **Merge without QA steps** (step 2b) posts only its one line.
 - The password is written only when `qa password in note` is `yes`. Otherwise the line names where it lives, as `qa sign-ins` says.
 - Odd facts a tester would miss (a hidden column, a separate full-screen view) go in the list where they apply.
 - Every step-7 rule: no diff, no closing keyword, every `posting rules` line.
@@ -621,7 +644,8 @@ One block, one line per step, each with its verified result:
     after deploy  2 steps written to the PR body under the heading
                   (or: 1 step, already recorded / none found)
     QA steps    posted to #2475, data met (or: needs a QA reseed /
-                not met, skipped / none, nothing a tester can click)
+                merged without QA steps, seed lacks it / none, nothing a
+                tester can click)
     merged      #2479 -> main, squash a1b2c3d
     worktree    removed <path> (discarded <generated files>)
     local       branch schema-probe-gate deleted
