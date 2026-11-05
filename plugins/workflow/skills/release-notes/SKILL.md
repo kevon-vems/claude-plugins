@@ -407,6 +407,13 @@ Rules for the email:
 - **Assume the changelog entries are drafts** and hand them to the reviewer.
 - Never an em-dash or en-dash; use a single hyphen.
 
+**Put the draft in front of the operator in the built-in browser, in the same turn you save it.**
+
+- Open it as `file:///<path>` with `mcp__Claude_Browser__navigate`, forward slashes.
+- Take one screenshot to confirm it rendered, and fix anything broken before asking about a commit.
+- The operator reviews the email there, not as raw HTML in chat.
+- No built-in browser tools in the session: say so in one line and show the path instead.
+
 **This skill drafts and stops.** Show the path, and ask whether to commit it with the SQL.
 Never send it in the same turn, and never on silence.
 Sending is the operator's word, through whatever send path `operator profile` sets out.
