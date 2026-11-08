@@ -28,6 +28,7 @@ Values this skill uses, with their defaults:
 | `base branch` | Shared | the repo's default branch |
 | `worktree folder` | Shared | whatever `git worktree list` reports |
 | `human merges` | Shared | ALL paths: nothing auto-ships; a person types `/shipit` |
+| `merge owner tool` | Shared | none (match `human merges`) |
 | `posting rules` | Shared | none beyond this skill's own |
 | `generated files` | Shared | none |
 | `people` | Shared | none (they/them) |
@@ -85,7 +86,7 @@ Deleting the remote branch first leaves a live worktree pointed at nothing.
 
 **The review loop may call this on its own** as `/shipit --yes`.
 It does so only when CI is green and the review is clean with nothing open, nits included (`/pr-review`).
-It never does so for a PR touching a `human merges` path.
+It never does so for a human-merge PR (step 1).
 If this skill finds it was started that way on such a PR anyway, step 3 runs.
 
 `--keep-worktree` leaves the directory and its branch alone (step 6 only deletes the remote).
@@ -129,8 +130,10 @@ Never merge past red checks silently.
 If it is empty, scan the PR body for a bare `#NNNN` and treat that as a candidate, clearly marked as a guess.
 No issue found at all means steps 7 and 8 do not run; say so and skip them.
 
-**Human-merge paths.** Match the PR's `files` against `human merges`.
-Any match on a run the review loop started (not a person) means step 3 runs, `--yes` or not.
+**Human-merge PR.** Decided by a run, never by eye.
+When Shared `merge owner tool` is set, run it with the PR number for `<pr>`: a first line of `Claude merges` means it is not a human-merge PR, whatever paths it touches; `human merges`, a failed run or any other output means it is.
+With no tool set, match the PR's `files` against `human merges`; any match makes it one.
+A human-merge PR on a run the review loop started (not a person) means step 3 runs, `--yes` or not.
 
 Also count review threads nobody resolved:
 
@@ -260,7 +263,7 @@ Show the drafted QA steps in chat before step 3, and add one line to the confirm
 ## 3. Confirm once
 
 Show one block in chat, everything that is about to happen.
-`--yes` skips this step, except on a run the review loop started for a `human merges` path (step 1).
+`--yes` skips this step, except on a run the review loop started for a human-merge PR (step 1).
 
     PR   #2479  worker: gate the schema-compatibility probe (#2475)
     into main, SQUASH

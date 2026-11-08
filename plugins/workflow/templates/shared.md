@@ -14,6 +14,8 @@ Read by every skill in this plugin, and by the band. Every line is optional. A m
   - `yes`: a PR opened for a GitHub issue carries `#<number>` in its title.
 - human merges: ALL paths
   - Paths where a person must merge. One line, comma-separated, `except` allowed (`src/ except src/tests/`). Default: every path, so nothing auto-ships.
+- merge owner tool: none
+  - A command that decides who merges one PR, `<pr>` standing for its number. Its first output line is exactly `Claude merges` or `human merges`. When set, its answer replaces matching the PR's files against `human merges`, so a rule a path cannot express (a comment-only change) still counts. A run that fails or prints anything else counts as `human merges`. Default: none, match the paths.
 - review gated: every PR
   - Paths where a clean review is required before a merge. Same form as `human merges`.
 - generated files: none

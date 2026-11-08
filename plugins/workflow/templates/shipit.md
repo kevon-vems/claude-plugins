@@ -1,6 +1,6 @@
 ## Shipit
 
-Read by /shipit. Every line is optional. It also reads `## Shared`: `repo`, `base branch`, `worktree folder`, `human merges`, `posting rules`, `generated files`, `people`.
+Read by /shipit. Every line is optional. It also reads `## Shared`: `repo`, `base branch`, `worktree folder`, `human merges`, `merge owner tool`, `posting rules`, `generated files`, `people`.
 
 - merge method: repo default
   - `squash`, `merge` or `rebase`. Default: the one method the repo allows; when it allows several, /shipit asks.

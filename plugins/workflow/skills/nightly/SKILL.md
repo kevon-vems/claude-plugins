@@ -51,6 +51,7 @@ A key in both files takes the local value.
 | `<base branch>` | Shared `base branch` | the repo's default branch |
 | `<branch prefix>` | Shared `branch prefix` | `claude/` |
 | `<human merges>` | Shared `human merges` | every path |
+| `<merge owner tool>` | Shared `merge owner tool` | none (match `<human merges>`) |
 | `<worktree folder>` | Shared `worktree folder` | a sibling folder of the checkout |
 | `<build check>` | `build check` | none: the step is skipped, and the report says so |
 | `<workflow>` | `workflow` | **required** |
@@ -350,7 +351,7 @@ An item a fix agent cannot finish is reported as blocked, with why. It is not fi
 4. Open ONE pull request against `<base branch>`.
    - The body lists every item, under Failures, Tests to write and Notices to review, with its run URL.
    - When `<caught label>` is set and any item is a real product bug, the PR gets `--label <caught label>`.
-   - A change under `<human merges>` is a PR a person merges.
+   - Who merges it comes from a run, never from reading the file list: `<merge owner tool>` with the PR number for `<pr>` when set (only a first line of `Claude merges` makes it Claude's), else any change under `<human merges>` makes it a PR a person merges. Say which, with the tool's reason line.
    - Never a closing keyword. Follow every Shared `posting rules` line.
 5. Start the review loop on it (`/pr-review`), as for any PR.
 

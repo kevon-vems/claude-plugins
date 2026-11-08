@@ -31,6 +31,7 @@ Keys this skill reads, with defaults:
 | `base branch` | Shared | the repo's default branch |
 | `worktree folder` | Shared | whatever `git worktree list` reports |
 | `human merges` | Shared | ALL paths |
+| `merge owner tool` | Shared | none (match `human merges`) |
 | `review gated` | Shared | every PR |
 | `posting rules` | Shared | none |
 | `start on PR open` | PR review | `yes` |
@@ -236,11 +237,19 @@ triggers this.
 - **CI red** -> fix it like any other finding: in the worktree, commit,
   push, back to step 1. The push moved the head, so it needs a fresh
   review round.
-- **Both green** -> by what the PR touches, first match wins:
+- **Both green** -> by what the PR touches, first match wins.
+
+**A human merge** is decided by a run, never by eye. When Shared
+`merge owner tool` is set, run it with the PR number for `<pr>`: a
+first line of `Claude merges` means it is NOT a human merge, whatever
+paths it touches; `human merges`, a failed run or any other output
+means it is. With no tool set, it is a human merge when any of its
+files matches Shared `human merges`. Quote the tool's reason line when
+you report the result.
 
 | PR touches | Action |
 |---|---|
-| Any path in Shared `human merges` (default: every path) | **Stop.** Say "CI green, review clean, no nits -- ready for `/shipit`". A human merges it |
+| A human merge (default: every PR) | **Stop.** Say "CI green, review clean, no nits -- ready for `/shipit`". A human merges it |
 | Only paths `auto-ship` allows | Run `/shipit --yes` on its own. Its issue question at the end still asks |
 | Anything else (`auto-ship: none`, the default) | Ask with `AskUserQuestion`, single-select, labels `Ship it -- PR #<n>` (first) and `Hold -- PR #<n>`. Ship -> `/shipit --yes`. Hold -> stop |
 

@@ -1,7 +1,7 @@
 ## PR review
 
 Read by the `pr-review` skill and the `pr-reviewer` agent. Every line is optional.
-Also read: `## Shared` keys `repo`, `base branch`, `worktree folder`, `human merges`, `review gated`, `posting rules`, `people`.
+Also read: `## Shared` keys `repo`, `base branch`, `worktree folder`, `human merges`, `merge owner tool`, `review gated`, `posting rules`, `people`.
 
 - start on PR open: yes
   - `yes`: the session that opens a PR starts the review loop at once, with no question. `no`: the loop starts only when asked. Default: `yes`.
@@ -14,7 +14,7 @@ Also read: `## Shared` keys `repo`, `base branch`, `worktree folder`, `human mer
 - merge guard: none
   - Name a hook that blocks a merge until the review is clean, if the repo has one. `none`: the skill keeps its own round cap and never assumes anything else will stop a merge. Default: `none`.
 - auto-ship: none
-  - Paths where a PR that is review-clean, CI-green and nit-free may run `/shipit --yes` on its own. `none`: the skill asks first. `all except human merges`: any PR touching nothing in Shared `human merges`. Default: `none`.
+  - Paths where a PR that is review-clean, CI-green and nit-free may run `/shipit --yes` on its own. `none`: the skill asks first. `all except human merges`: any PR that is not a human merge (Shared `merge owner tool` when set, else no file in Shared `human merges`). Default: `none`.
 - nits: ask
   - `ask`: ask once per PR whether to fix open nits. `fix`: always fix them. `leave`: never fix them. Default: `ask`.
 - prose can gate: no
