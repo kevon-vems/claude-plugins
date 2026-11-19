@@ -48,7 +48,7 @@ Values this skill uses, with their defaults:
 | `qa seed add` | Shipit | none |
 | `qa sign-ins` | Shipit | none |
 | `qa password in note` | Shipit | no |
-| `impact record tool` | Shipit | none: steps 3b and 4b are skipped |
+| `impact record tool` | Shipit | none: steps 2c and 4b are skipped |
 
 When the settings name docs (`docs:`), read them before step 1.
 
@@ -61,8 +61,8 @@ Things happen in this order, and the order matters:
 1. resolve the PR and check the ground
 2. record the PR's one-time after-deploy steps
 2b. check the QA data this PR needs, and seed what is missing
+2c. read the reviewer's content impact list
 3. confirm once
-3b. read the reviewer's content impact list
 4. merge
 4b. record the content impact
 5. remove the local worktree and its branch
@@ -263,6 +263,22 @@ Show the drafted QA steps in chat before step 3, and add one line to the confirm
               (SubscriptionSeeder.SeedExpiredAsync) - posted to #2475
               after the merge
 
+## 2c. The reviewer's content impact list
+
+Only when the settings name an `impact record tool`. Skip cleanly otherwise.
+
+The `pr-reviewer` judges whether the PR changes what a training video, help page or portal guide shows, and posts its answer as a hidden line in its review body (`/pr-review`, "Content impact"):
+
+    <!-- pr-impact [{"surface":"video","target":"...","verdict":"re-record","reason":"..."}] -->
+
+Read the PR's reviews only, and only those carrying the `pr-review sha=` marker. A comment that quotes the line does not count. Take the LATEST such review that carries the line, and parse its JSON array. Never rebuild the list from the diff yourself: this step records the reviewer's verdict, it does not judge.
+
+- no review carries the line, or the array is empty: nothing to record, say `impact  none flagged` in the confirm block and go on
+- the line does not parse as a JSON array at all: nothing to record, name it in the report
+- a row that is malformed, or a row with an empty `reason`, a `surface` other than `video`, `help-page` or `guide`, or a `verdict` that does not fit its surface: drop that row, name it in the report, record the rest
+
+Show one line per row in the step 3 block: `impact  video 12 re-record - <reason, first 80 characters>`.
+
 ## 3. Confirm once
 
 Show one block in chat, everything that is about to happen.
@@ -292,7 +308,7 @@ That is the single most surprising thing this skill does, and it decides whether
 
 The after-deploy line shows only when step 2 ran.
 
-**Content impact.** Only with an `impact record tool` setting. Read it (step 3b) and show one line per row in this block, or `impact  none flagged` / nothing when the block is absent. The same confirm covers recording it after the merge (step 4b).
+**Content impact.** Only with an `impact record tool` setting. Read it (step 2c) and show one line per row in this block, or `impact  none flagged` / nothing when the block is absent. The same confirm covers recording it after the merge (step 4b).
 
 Then confirm with **AskUserQuestion**, exactly two options, no others:
 
@@ -305,21 +321,6 @@ Never proceed on silence.
 **The confirm is an AskUserQuestion, not a chat prompt.**
 Two options, answered in one click, with no room for a "go" that meant something else.
 A merge deserves one.
-
-## 3b. The reviewer's content impact list
-
-Only when the settings name an `impact record tool`. Skip cleanly otherwise.
-
-The `pr-reviewer` judges whether the PR changes what a training video, help page or portal guide shows, and posts its answer as a hidden line in its review body (`/pr-review`, "Content impact"):
-
-    <!-- pr-impact [{"surface":"video","target":"...","verdict":"re-record","reason":"..."}] -->
-
-Read the PR's reviews AND comments, take the LATEST one carrying the line, and parse its JSON array. Never rebuild the list from the diff yourself: this step records the reviewer's verdict, it does not judge.
-
-- no review carries the line, or the array is empty: nothing to record, say `impact  none flagged` in the confirm block and go on
-- a malformed line, or a row with an empty `reason`, a `surface` other than `video`, `help-page` or `guide`, or a `verdict` that does not fit its surface: drop that row, name it in the report, record the rest
-
-Show one line per row in the step 3 block: `impact  video 12 re-record - <reason, first 80 characters>`.
 
 ## 4. Merge
 
@@ -371,7 +372,7 @@ A tool it names that is not on this machine is skipped, with one line saying so.
 
 ## 4b. Record the content impact
 
-Only when step 3b found at least one row, and only after step 4 proved `state` is `MERGED`. The recorder refuses an unmerged PR. The merge confirm (or `--yes`) is the go-ahead; ask nothing more. This also runs on the headless `shipit` chore, which runs this same skill.
+Only when step 2c found at least one row, and only after step 4 proved `state` is `MERGED`. The recorder refuses an unmerged PR. The merge confirm (or `--yes`) is the go-ahead; ask nothing more. This also runs on the headless `shipit` chore, which runs this same skill.
 
 Write the rows as a JSON array to the scratchpad with the **Write tool** (no shell redirect: it can add a BOM), then run the setting's command with `<n>` and `<file>` filled in:
 
@@ -691,7 +692,7 @@ One block, one line per step, each with its verified result:
     nits        3 filed as #2531 <url>   (or: 3 skipped, still in their
                 threads / none found)
 
-Drop the after-deploy line when step 2 did not run, the QA steps line when step 2b did not, and the impact line when step 3b did not.
+Drop the after-deploy line when step 2 did not run, the QA steps line when step 2b did not, and the impact line when step 2c did not.
 
 Then, and only then, anything that needs the user, one line each:
 
