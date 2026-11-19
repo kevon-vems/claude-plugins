@@ -758,6 +758,9 @@ printed it), `verdict` (`re-record` or `script-only` for a video,
 block (not only the delta) and re-posts it, so the latest review's
 block is the one `/shipit` records. A dropped hint is simply absent. The
 dimension skipped: omit the block entirely (absent is not empty).
+A same-head ruling review (step 3, no full re-read) copies the prior
+round's `pr-impact` line forward unchanged, since `/shipit` reads only
+the latest marked review.
 
 Nothing found and nothing outstanding: post the body alone with an empty
 `comments` array. **A round that clears every prior finding is the most
