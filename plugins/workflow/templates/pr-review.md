@@ -33,6 +33,10 @@ Also read: `## Shared` keys `repo`, `base branch`, `worktree folder`, `human mer
   - A command that lists doc pages the diff changed the code behind and did not update. `<base>` is replaced with the base SHA. Default: none (the Doc drift dimension is skipped).
 - doc drift docs:
   - One line per kind of doc the Doc drift dimension covers (for example `*.readme.md`). Default: none.
+- impact tool:
+  - A command that lists the training videos, per-screen help pages and portal guides the diff touches, as JSON. `<base>` is replaced with the base SHA. The reviewer runs it, then judges the diff, the PR body and each named video's script itself, because the output is only a hint. It records a hidden `<!-- pr-impact [...] -->` block in the review body, never gating. Default: none (the Content impact dimension is skipped).
+- impact paths:
+  - One line per path prefix. The Content impact dimension runs only when the diff touches one of them. Default: none (it runs on every diff when an `impact tool` is set).
 - test run: <path> = <command>
   - One line per path whose tests the reviewer runs when the diff touches it, in a checkout at exactly the PR head. A failing test is a `blocking` finding. Default: none (no tests run).
 - review rule:

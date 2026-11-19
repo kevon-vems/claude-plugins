@@ -34,4 +34,6 @@ Read by /shipit. Every line is optional. It also reads `## Shared`: `repo`, `bas
   - Where the seeded logins and their password come from, e.g. a command that prints them.
 - qa password in note: no
   - `yes` writes the seeded password into the QA steps. Only for an issue repo that is private. Default: no, the note names where the password lives.
+- impact record tool: none
+  - The command /shipit runs after the merge to record the reviewer's content impact rows (the latest `<!-- pr-impact [...] -->` block on the PR). `<n>` is the PR number and `<file>` a JSON array written to the scratchpad. Example: `pwsh -NoProfile -File Operations/training-videos/Record-PrImpact.ps1 -Pr <n> -From <file>`. An empty or absent block records nothing. Default: none, the steps are skipped.
 - One plain bullet per house rule /shipit follows as if it were written in the skill.

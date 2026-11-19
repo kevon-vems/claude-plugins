@@ -48,6 +48,7 @@ Values this skill uses, with their defaults:
 | `qa seed add` | Shipit | none |
 | `qa sign-ins` | Shipit | none |
 | `qa password in note` | Shipit | no |
+| `impact record tool` | Shipit | none: steps 3b and 4b are skipped |
 
 When the settings name docs (`docs:`), read them before step 1.
 
@@ -61,7 +62,9 @@ Things happen in this order, and the order matters:
 2. record the PR's one-time after-deploy steps
 2b. check the QA data this PR needs, and seed what is missing
 3. confirm once
+3b. read the reviewer's content impact list
 4. merge
+4b. record the content impact
 5. remove the local worktree and its branch
 6. delete the remote branch
 7. comment on the linked issue
@@ -289,6 +292,8 @@ That is the single most surprising thing this skill does, and it decides whether
 
 The after-deploy line shows only when step 2 ran.
 
+**Content impact.** Only with an `impact record tool` setting. Read it (step 3b) and show one line per row in this block, or `impact  none flagged` / nothing when the block is absent. The same confirm covers recording it after the merge (step 4b).
+
 Then confirm with **AskUserQuestion**, exactly two options, no others:
 
 - **Merge it** - proceed to step 4
@@ -300,6 +305,21 @@ Never proceed on silence.
 **The confirm is an AskUserQuestion, not a chat prompt.**
 Two options, answered in one click, with no room for a "go" that meant something else.
 A merge deserves one.
+
+## 3b. The reviewer's content impact list
+
+Only when the settings name an `impact record tool`. Skip cleanly otherwise.
+
+The `pr-reviewer` judges whether the PR changes what a training video, help page or portal guide shows, and posts its answer as a hidden line in its review body (`/pr-review`, "Content impact"):
+
+    <!-- pr-impact [{"surface":"video","target":"...","verdict":"re-record","reason":"..."}] -->
+
+Read the PR's reviews AND comments, take the LATEST one carrying the line, and parse its JSON array. Never rebuild the list from the diff yourself: this step records the reviewer's verdict, it does not judge.
+
+- no review carries the line, or the array is empty: nothing to record, say `impact  none flagged` in the confirm block and go on
+- a malformed line, or a row with an empty `reason`, a `surface` other than `video`, `help-page` or `guide`, or a `verdict` that does not fit its surface: drop that row, name it in the report, record the rest
+
+Show one line per row in the step 3 block: `impact  video 12 re-record - <reason, first 80 characters>`.
 
 ## 4. Merge
 
@@ -348,6 +368,16 @@ Anything else and the rest of this skill does not run: a branch deleted after a 
 **Deploy.** This skill never deploys on its own.
 If the settings name a `deploy after merge` step, show it and ask with **AskUserQuestion** (**Run it** / **Skip**) before running it.
 A tool it names that is not on this machine is skipped, with one line saying so.
+
+## 4b. Record the content impact
+
+Only when step 3b found at least one row, and only after step 4 proved `state` is `MERGED`. The recorder refuses an unmerged PR. The merge confirm (or `--yes`) is the go-ahead; ask nothing more. This also runs on the headless `shipit` chore, which runs this same skill.
+
+Write the rows as a JSON array to the scratchpad with the **Write tool** (no shell redirect: it can add a BOM), then run the setting's command with `<n>` and `<file>` filled in:
+
+    pwsh -NoProfile -File <repo checkout>\Operations\training-videos\Record-PrImpact.ps1 -Pr <n> -From <scratchpad>\pr-<n>-impact.json
+
+(the real command is the setting's value). The script reads the PR's title, link, author and merge commit itself. A failed run is reported, never retried blindly, never a reason to undo the merge; say the error in the report. No PR body or comment is written for this step.
 
 ## 5. Worktree and local branch
 
@@ -649,6 +679,7 @@ One block, one line per step, each with its verified result:
     QA steps    posted to #2475, data met (or: needs a QA reseed /
                 merged without QA steps, seed lacks it / none, nothing a
                 tester can click)
+    impact      2 rows recorded (or: none flagged / record failed: <why>)
     merged      #2479 -> main, squash a1b2c3d
     worktree    removed <path> (discarded <generated files>)
     local       branch schema-probe-gate deleted
@@ -660,7 +691,7 @@ One block, one line per step, each with its verified result:
     nits        3 filed as #2531 <url>   (or: 3 skipped, still in their
                 threads / none found)
 
-Drop the after-deploy line when step 2 did not run, and the QA steps line when step 2b did not.
+Drop the after-deploy line when step 2 did not run, the QA steps line when step 2b did not, and the impact line when step 3b did not.
 
 Then, and only then, anything that needs the user, one line each:
 
