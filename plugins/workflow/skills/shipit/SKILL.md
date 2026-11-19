@@ -271,9 +271,9 @@ The `pr-reviewer` judges whether the PR changes what a training video, help page
 
     <!-- pr-impact [{"surface":"video","target":"...","verdict":"re-record","reason":"..."}] -->
 
-Read the PR's reviews only, and only those carrying the `pr-review sha=` marker. A comment that quotes the line does not count. Take the LATEST such review that carries the line, and parse its JSON array. Never rebuild the list from the diff yourself: this step records the reviewer's verdict, it does not judge.
+Read the PR's reviews only, and only those carrying the `pr-review sha=` marker. A comment that quotes the line does not count. Take the LATEST such review only. If it carries the line, parse its JSON array; if it does not, there is nothing to record, even when an older round carried one. Never rebuild the list from the diff yourself: this step records the reviewer's verdict, it does not judge.
 
-- no review carries the line, or the array is empty: nothing to record, say `impact  none flagged` in the confirm block and go on
+- the latest marked review lacks the line, or the array is empty: nothing to record, say `impact  none flagged` in the confirm block and go on
 - the line does not parse as a JSON array at all: nothing to record, name it in the report
 - a row that is malformed, or a row with an empty `reason`, a `surface` other than `video`, `help-page` or `guide`, or a `verdict` that does not fit its surface: drop that row, name it in the report, record the rest
 
