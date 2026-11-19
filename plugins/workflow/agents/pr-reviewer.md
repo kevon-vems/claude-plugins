@@ -51,6 +51,20 @@ it landed. Everything in that file binds you, including:
 - the marker line with `verdict=`, and the `<!-- pr-review-agent -->`
   signature on every thread reply.
 
+## Content impact
+
+Only when the settings carry an `impact tool` line. Follow the skill's
+"Content impact" dimension: run the tool, then read the diff, the PR
+body and the script of every video the hint names yourself, because the
+hint has blind spots. Be HYPER critical: flag a target only when you can
+name the concrete change (a step added or removed, a required field
+added, a control the narration names removed or renamed, behavior the
+narration states becoming false). Icon swaps, layout drift, optional
+fields, new rows, toasts and seed data are never a flag, and "cause
+unknown" is never a flag. Post the findings in the review body as the
+skill's hidden `<!-- pr-impact [...] -->` block plus a short human list.
+They never gate and never count in `pr-review-open`.
+
 ## Test runs
 
 Only when the settings carry a `test run` line. Any round whose diff

@@ -46,6 +46,7 @@ Keys this skill reads, with defaults:
 | `reviewer model` / `low-risk model` | PR review | the agent's own |
 | `convention docs` | PR review | `CLAUDE.md`, `AGENTS.md` |
 | `doc drift tool` / `doc drift docs` | PR review | none (skip) |
+| `impact tool` / `impact paths` | PR review | none (the Content impact dimension is skipped) |
 | `test run` | PR review | none |
 | `review rule` | PR review | none |
 
@@ -482,6 +483,7 @@ Cover, in this order, only what the diff touches:
 | **Convention** | the repo's own rules - the docs `convention docs` names |
 | **Comment rot** | a comment the diff just made false - **always `nit`** |
 | **Doc drift** | a doc of a `doc drift docs` kind whose claim the diff just made false - **always `nit`** |
+| **Content impact** | a training video, per-screen help page or portal guide whose shown content the diff REALLY changes - **never gating, never counted** |
 
 **Verify before posting.** A comment on a PR is public and permanent. Each
 finding needs a concrete failure scenario - specific input or state, and
@@ -523,6 +525,61 @@ commit is.
 
 This is one typed category with a hard precondition, deliberately. It is not
 a standing license to review documentation.
+
+### Content impact - what a video, help page or guide shows
+
+Runs only when the settings carry an `impact tool`. No line: skip this
+dimension. An `impact paths` line (one path prefix per line) limits it
+to diffs that touch one of them; a diff touching none skips it.
+
+The question is not "did a screen change". It is: **does this PR change
+what a training video, a per-screen help page or a portal guide shows or
+says?** A person later re-records, redrafts or updates because of your
+answer, so a false flag costs real work.
+
+1. Run the tool from the repo root, `<base>` set to the PR's base
+   (the same substitution as `doc drift tool`). Its output names the
+   videos, help pages and guides whose files the diff touches.
+2. **The tool is only a hint with blind spots.** It sees a narrow slice of
+   the code (it can miss CSS, JavaScript, server logic and behavior that
+   reaches a screen indirectly). So ALSO read the full diff and the PR
+   body yourself, and for every video the hint names, read that video's
+   narration or script. A change the hint missed is still a finding when
+   you can name it. A hint with nothing behind it is dropped.
+3. Decide per touched video, help page or guide whether the PR REALLY
+   changes what is shown. Be HYPER critical.
+
+   **Flag only when the change alters the underlying CONCEPT, or the
+   steps or controls the narration depends on:**
+   - a step added or removed
+   - a REQUIRED field added
+   - a control the narration names is removed, renamed or changed in meaning
+   - behavior the narration states becomes false
+
+   **Never worth a flag:**
+   - one icon swapped for another, or text buttons becoming icons
+   - layout, spacing or color drift
+   - a changed list of menu items the script does not call out
+   - an optional field added
+   - a field removed that the video never mentions
+   - new list rows, toasts, loading states
+   - seed or sample data differences
+
+4. **The reason must be specific.** Name the concrete change, in words a
+   person can check against the video: "the collapse arrow was removed"
+   or "Vendor is now a required field on the Add Shot form". Quote the
+   file and the PR where it helps. **If you cannot name a concrete
+   change, record NOTHING for that target.** "Cause unknown", "might
+   affect" and "please check" are never a flag. Max 1000 characters.
+5. Verdicts. Video: `re-record` (the picture or steps are now wrong) or
+   `script-only` (the narration is now wrong, the picture still serves).
+   Help page: `redraft` (its description is now wrong). Guide: `update`.
+   The same strictness applies to all three.
+
+Findings are **not gating and not counted**: they never set
+`verdict=blocked` and never enter the `pr-review-open` counts, so they
+never ask the author for a fix. Report them in the review body (step 6).
+You never edit a video, page or guide.
 
 ### Prose never gates
 
@@ -684,6 +741,26 @@ it, and a `merge guard`, when the repo has one, may depend on `verdict`:
   review round and demands rounds forever. A reader may parse
   liberally, but the emitter stays strict, because the reader you break
   is the one running from a checkout you did not update.
+
+**Content impact block.** When the Content impact dimension ran, add to
+the body, above the `pr-review-open` line, a short human list (one line
+per target: what, verdict, the specific reason) and this hidden line,
+ALWAYS, `[]` when nothing was flagged:
+
+    <!-- pr-impact [{"surface":"video","target":"<video id>","verdict":"re-record","reason":"..."}] -->
+
+Each row is `surface` (`video`, `help-page` or `guide`), `target` (the
+video id, the help page key or the guide path, exactly as the tool
+printed it), `verdict` (`re-record` or `script-only` for a video,
+`redraft` for a help page, `update` for a guide) and a non-empty
+`reason` of at most 1000 characters. One line of valid JSON, with no
+`-->` inside a reason. Every round re-judges the WHOLE diff for this
+block (not only the delta) and re-posts it, so the latest review's
+block is the one `/shipit` records. A dropped hint is simply absent. The
+dimension skipped: omit the block entirely (absent is not empty).
+A same-head ruling review (step 3, no full re-read) copies the prior
+round's `pr-impact` line forward unchanged, since `/shipit` reads only
+the latest marked review.
 
 Nothing found and nothing outstanding: post the body alone with an empty
 `comments` array. **A round that clears every prior finding is the most
